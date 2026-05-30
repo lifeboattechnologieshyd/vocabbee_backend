@@ -18,4 +18,5 @@ ENABLE_SILK = False
 ALLOWED_HOSTS = [
     "vocabbee.com",
     "www.vocabbee.com",
+    "api.vocabbee.com",
 ]
