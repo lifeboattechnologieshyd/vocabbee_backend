@@ -1,0 +1,34 @@
+name: Deploy Vocabbee
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-vocabbee-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VOCABBEE_EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.VOCABBEE_EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh "${{ secrets.VOCABBEE_EC2_USER }}@${{ secrets.VOCABBEE_EC2_HOST }}" << 'EOF'
+          set -e
+          cd /home/ubuntu/vocabbee_backend
+          git pull origin main
+          docker compose -f deploy/compose/docker-compose.yaml up -d --build --force-recreate
+          EOF
