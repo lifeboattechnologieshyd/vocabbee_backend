@@ -154,6 +154,7 @@ class Kids(AuditModel):
     name = models.CharField(
         max_length=100
     )
+    date_of_birth = models.DateField(null=True, blank=True)
 
     profile_image = models.CharField(
         max_length=500,
@@ -167,3 +168,78 @@ class Kids(AuditModel):
 
     class Meta:
         db_table = "kids"
+
+class Words(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    grade = models.ForeignKey(
+        Grades,
+        on_delete=models.PROTECT,
+        related_name="words"
+    )
+
+    word = models.CharField(
+        max_length=255
+    )
+
+    difficulty = models.PositiveSmallIntegerField(
+        default=1
+    )
+    meaning = models.TextField(
+        blank=True,
+        null=True
+    )
+    part_of_speech = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+    origin = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+    usage = models.TextField(
+        blank=True,
+        null=True
+    )
+    is_active = models.BooleanField(
+        default=True
+    )
+    class Meta:
+        db_table = "words"
+
+class DailyChallengeWords(AuditModel):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    challenge_date = models.DateField()
+    grade = models.ForeignKey(
+        Grades,
+        on_delete=models.PROTECT
+    )
+    word = models.ForeignKey(
+        Words,
+        on_delete=models.PROTECT
+    )
+
+    order = models.IntegerField(
+        default=1
+    )
+    is_active = models.BooleanField(
+        default=True
+    )
+    class Meta:
+        db_table = "daily_challenge_words"
+        unique_together = (
+            "challenge_date",
+            "grade",
+            "word"
+        )

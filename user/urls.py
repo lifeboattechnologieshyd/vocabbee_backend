@@ -1,6 +1,8 @@
 from django.urls import path
-from .views import TestAPIView
+from .views import SendOtp
 
 urlpatterns = [
-    path("test/", TestAPIView.as_view(), name="user-test"),
+    path("user/send-otp", SendOtp.as_view()),
+    path("user/verify-otp", SendOtp.as_view()),
+
 ]
