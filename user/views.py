@@ -31,8 +31,6 @@ class SendOtp(APIView):
             )
         otp = str(random.randint(1000, 9999))
         otp = "1234"
-        # https://full2ads.com/smsapi/index?key=26911C63F0A654&campaign=0&routeid=1&type=text&contacts={mobile}&senderid=VOCABE&tlv=%7B%22DLT_ENTITY_ID%22%3A%221001548232379518414%22%2C%22DLT_TEMPLATE_ID%22%3A%221107178030754522073%22%7D&type=text&msg=Use%20OTP%20{otp}%20to%20login%20to%20VOCABBEE.%20OTP%20is%20valid%20for%2010%20minutes.%20Do%20not%20share%20th%20is%20OTP%20with%20anyone.
-        # deactivate previous active OTPs
         OTPs.objects.filter(
             mobile_number=mobile,
             is_active=True
@@ -86,7 +84,8 @@ class VerifyOTP(APIView):
         if not user:
             user = UserMaster.objects.create_user(
                 mobile=mobile,
-                is_mobile_verified=True
+                is_mobile_verified=True,
+                user_role = ["parent"]
             )
 
         else:
@@ -94,8 +93,9 @@ class VerifyOTP(APIView):
                 user.is_mobile_verified = True
                 user.save()
 
+        user.last_login_at = timezone.now()
+        user.save(update_fields=["last_login_at"])
         refresh = RefreshToken.for_user(user)
-
         return CustomResponse().successResponse(
             data={
                 "user_id": str(user.id),
