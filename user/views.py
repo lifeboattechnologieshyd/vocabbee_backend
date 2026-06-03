@@ -2,6 +2,7 @@ import random
 from datetime import timedelta
 
 from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -104,4 +105,53 @@ class VerifyOTP(APIView):
                 "is_profile_completed": bool(user.full_name)
             },
             description="Login successful"
+        )
+
+
+class Profile(APIView):
+
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        return CustomResponse().successResponse(
+            data={
+                "user_id": str(user.id),
+                "mobile": user.mobile,
+                "full_name": user.full_name,
+                "profile_image": user.profile_image,
+                "user_role": user.user_role,
+                "is_profile_completed": user.is_profile_completed
+            },
+            description="Profile fetched successfully"
+        )
+
+    def put(self, request):
+
+        user = request.user
+        full_name = request.data.get("full_name")
+        profile_image = request.data.get("profile_image")
+
+        if not full_name:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Full name is required"
+            )
+
+        user.full_name = full_name.strip()
+
+        if profile_image is not None:
+            user.profile_image = profile_image
+
+        user.save()
+
+        return CustomResponse().successResponse(
+            data={
+                "user_id": str(user.id),
+                "mobile": user.mobile,
+                "full_name": user.full_name,
+                "profile_image": user.profile_image,
+                "user_role": user.user_role,
+                "is_profile_completed": True
+            },
+            description="Profile updated successfully"
         )

@@ -116,6 +116,14 @@ class UserMaster(AbstractBaseUser):
     def is_parent(self):
         return "parent" in (self.user_role or [])
 
+    @property
+    def display_name(self):
+        return self.full_name or str(self.mobile)
+
+    @property
+    def is_profile_completed(self):
+        return bool(self.full_name)
+
 
     class Meta:
         db_table = "user_master"
