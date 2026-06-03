@@ -26,7 +26,7 @@ class SendOtp(APIView):
                 data={},
                 description="Any account with this number does not exist"
             )
-        if not user.user_role.is_admin:
+        if not user.is_admin:
             return CustomResponse().errorResponse(
                 data={},
                 description="You Don't have access to login"
@@ -93,6 +93,11 @@ class VerifyOTP(APIView):
         user = UserMaster.objects.filter(
             mobile=mobile
         ).first()
+        if not user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="You don't have access to use this"
+            )
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
         refresh = RefreshToken.for_user(user)
