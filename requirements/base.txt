@@ -34,6 +34,8 @@ django-health-check==3.18.*
 
 # Utilities
 requests>=2.32.0
+# crum
+django-crum==0.7.9
 
 # Observability
 opentelemetry-api==1.31.*
