@@ -5,7 +5,7 @@ from config.settings.common import *  # noqa : F403
 ENABLE_EMAIL = True
 
 
-DEBUG = False
+DEBUG = True
 
 
 ############################
