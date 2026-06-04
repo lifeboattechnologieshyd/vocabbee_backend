@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster
+from db.models.user import OTPs, UserMaster, Grades
 from shared.clients.sms import send_otp_sms
 from shared.utils import CustomResponse
 
@@ -109,4 +109,110 @@ class VerifyOTP(APIView):
                 "is_profile_completed": bool(user.full_name)
             },
             description="Login successful"
+        )
+
+class GradesList(APIView):
+
+    def get(self, request):
+
+        grades = Grades.objects.filter(
+            is_active=True
+        ).order_by(
+            "sort_order"
+        )
+
+        response = []
+
+        for grade in grades:
+
+            response.append({
+                "grade_id": str(grade.id),
+                "name": grade.name
+            })
+
+        return CustomResponse().successResponse(
+            data=response,
+            description="Grades fetched successfully"
+        )
+
+    def post(self, request):
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+        name = request.data.get("name")
+        sort_order = request.data.get("sort_order", 1)
+        if not name:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Grade name is required"
+            )
+        grade = Grades.objects.create(
+            name=name,
+            sort_order=sort_order
+        )
+        return CustomResponse().successResponse(
+            data={
+                "grade_id": str(grade.id)
+            },
+            description="Grade created successfully"
+        )
+    def put(self, request):
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+
+        grade_id = request.data.get("grade_id")
+
+        grade = Grades.objects.filter(
+            id=grade_id,
+            is_active=True
+        ).first()
+        if not grade:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid grade"
+            )
+        name = request.data.get("name")
+        sort_order = request.data.get("sort_order")
+        if not name:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Grade name is required"
+            )
+        grade.name = name
+        if sort_order is not None:
+            grade.sort_order = sort_order
+        grade.save()
+        return CustomResponse().successResponse(
+            data={
+                "grade_id": str(grade.id)
+            },
+            description="Grade updated successfully"
+        )
+
+    def delete(self, request):
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+        grade_id = request.data.get("grade_id")
+        grade = Grades.objects.filter(
+            id=grade_id,
+            is_active=True
+        ).first()
+        if not grade:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid grade"
+            )
+        grade.is_active = False
+        grade.save()
+        return CustomResponse().successResponse(
+            data={},
+            description="Grade deleted successfully"
         )

@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster
+from db.models.user import OTPs, UserMaster, Grades, Kids
 from shared.clients.sms import send_otp_sms
 from shared.utils import CustomResponse
 
@@ -109,7 +109,6 @@ class VerifyOTP(APIView):
 
 
 class Profile(APIView):
-
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
@@ -154,4 +153,87 @@ class Profile(APIView):
                 "is_profile_completed": True
             },
             description="Profile updated successfully"
+        )
+
+class GradesList(APIView):
+    def get(self, request):
+        grades = Grades.objects.filter(
+                is_active=True
+            ).order_by(
+                "sort_order"
+            )
+        data = []
+        for grade in grades:
+            data.append({
+                "id": str(grade.id),
+                "name": grade.name
+            })
+        return CustomResponse().successResponse(
+            data=data,
+            description="Grades fetched successfully"
+        )
+
+
+class AddKid(APIView):
+
+    def post(self, request):
+
+        name = request.data.get("name")
+        grade_id = request.data.get("grade_id")
+        profile_image = request.data.get("profile_image")
+
+        if not name:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Kid name is required"
+            )
+
+        if not grade_id:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Grade is required"
+            )
+        grade = Grades.objects.filter(
+            id=grade_id,
+            is_active=True
+        ).first()
+        if not grade:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid grade"
+            )
+        kid = Kids.objects.create(
+            parent=request.user,
+            grade=grade,
+            name=name,
+            profile_image=profile_image
+        )
+        return CustomResponse().successResponse(
+            data={
+                "kid_id": str(kid.id)
+            },
+            description="Kid added successfully"
+        )
+
+    def get(self, request):
+        kids = request.user.kids.filter(
+            is_active=True
+        ).select_related(
+            "grade"
+        )
+
+        response = []
+        for kid in kids:
+            response.append({
+                "kid_id": str(kid.id),
+                "name": kid.name,
+                "profile_image": kid.profile_image,
+                "grade": {
+                    "id": str(kid.grade.id),
+                    "name": kid.grade.name
+                }
+            })
+        return CustomResponse().successResponse(
+            data=response,
+            description="Kids fetched successfully"
         )
