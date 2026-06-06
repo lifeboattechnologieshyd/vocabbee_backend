@@ -65,21 +65,18 @@ class SendOtp(APIView):
 class MakeAdmin(APIView):
     def post(self, request):
         mobile = request.data.get("mobile")
-        user = UserMaster.objects.filter(
-            mobile=mobile
-        ).first()
+        user = UserMaster.objects.filter(mobile=mobile).first()
+        if not user:
+            return CustomResponse().errorResponse(
+                data={},
+                description="No user found with mobile"
+            )
         if not user.is_admin:
             user.user_role = ['admin', 'parent']
             user.save()
-            return CustomResponse().successResponse(
-                data={},
-                description="User Role changed"
-            )
+            return CustomResponse().successResponse(data={},description="User Role changed")
         else:
-            return CustomResponse().errorResponse(
-                data={},
-                description="You are already an admin"
-            )
+            return CustomResponse().errorResponse(data={},description="You are already an admin")
 
 class VerifyOTP(APIView):
 
@@ -599,3 +596,5 @@ class UploadWords(APIView):
                 data={},
                 description=str(e)
             )
+
+
