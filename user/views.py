@@ -1,14 +1,16 @@
 import random
 from datetime import timedelta
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster, Grades, Kids
+from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
+    PracticeAttemptAnswers, Referrals, CoinTransactions
 from shared.clients.sms import send_otp_sms
+from shared.helper import get_practice_words, getReferralCode
 from shared.utils import CustomResponse
 
 class SendOtp(APIView):
@@ -86,23 +88,33 @@ class VerifyOTP(APIView):
             user = UserMaster.objects.create_user(
                 mobile=mobile,
                 is_mobile_verified=True,
+                referral_code=getReferralCode(),
                 user_role = ["parent"]
             )
-
         else:
             if not user.is_mobile_verified:
                 user.is_mobile_verified = True
                 user.save()
-
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
         refresh = RefreshToken.for_user(user)
+        can_apply_referral = not Referrals.objects.filter(
+            referred_user=user
+        ).exists()
         return CustomResponse().successResponse(
             data={
                 "user_id": str(user.id),
                 "access_token": str(refresh.access_token),
                 "refresh_token": str(refresh),
-                "is_profile_completed": bool(user.full_name)
+                "mobile": user.mobile,
+                "full_name": user.full_name,
+                "profile_image": user.profile_image,
+                "user_role": user.user_role,
+                "referral_code": user.referral_code,
+                "coins": user.coins,
+                "is_profile_completed": bool(user.full_name),
+                "can_apply_referral": can_apply_referral,
+                "kids": user.kids.count()
             },
             description="Login successful"
         )
@@ -112,6 +124,9 @@ class Profile(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
+        can_apply_referral = not Referrals.objects.filter(
+            referred_user=request.user
+        ).exists()
         return CustomResponse().successResponse(
             data={
                 "user_id": str(user.id),
@@ -119,6 +134,10 @@ class Profile(APIView):
                 "full_name": user.full_name,
                 "profile_image": user.profile_image,
                 "user_role": user.user_role,
+                "referral_code": user.referral_code,
+                "coins": user.coins,
+                "kids": user.kids.count(),
+                "can_apply_referral": can_apply_referral,
                 "is_profile_completed": user.is_profile_completed
             },
             description="Profile fetched successfully"
@@ -318,4 +337,103 @@ class AddKid(APIView):
         return CustomResponse().successResponse(
             data={},
             description="Kid deleted successfully"
+        )
+
+
+class ApplyReferral(APIView):
+
+    REFERRER_COINS = 50
+    REFERRED_USER_COINS = 25
+
+    @transaction.atomic
+    def post(self, request):
+
+        referral_code = request.data.get(
+            "referral_code",
+            ""
+        ).strip().upper()
+
+        if not referral_code:
+
+            return CustomResponse().errorResponse(
+                data={},
+                description="Referral code is required"
+            )
+
+        if Referrals.objects.filter(
+            referred_user=request.user
+        ).exists():
+
+            return CustomResponse().errorResponse(
+                data={},
+                description="Referral code already applied"
+            )
+
+        referrer = UserMaster.objects.filter(
+            referral_code=referral_code,
+            is_active=True
+        ).first()
+
+        if not referrer:
+
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid referral code"
+            )
+
+        if referrer.id == request.user.id:
+
+            return CustomResponse().errorResponse(
+                data={},
+                description="You cannot use your own referral code"
+            )
+
+        referral = Referrals.objects.create(
+            referrer=referrer,
+            referred_user=request.user,
+            referral_code=referral_code,
+            reward_coins=self.REFERRER_COINS
+        )
+
+        referrer.coins += self.REFERRER_COINS
+
+        request.user.coins += self.REFERRED_USER_COINS
+
+        referrer.save(
+            update_fields=[
+                "coins",
+                "updated_at"
+            ]
+        )
+
+        request.user.save(
+            update_fields=[
+                "coins",
+                "updated_at"
+            ]
+        )
+
+        CoinTransactions.objects.create(
+            user=referrer,
+            coins=self.REFERRER_COINS,
+            transaction_type="REFERRAL_BONUS",
+            reference_id=referral.id,
+            remarks=f"Referral reward for {request.user.mobile}",
+            balance_after_transaction=referrer.coins
+        )
+
+        CoinTransactions.objects.create(
+            user=request.user,
+            coins=self.REFERRED_USER_COINS,
+            transaction_type="REFERRAL_JOIN_BONUS",
+            reference_id=referral.id,
+            remarks=f"Joined using referral code {referral_code}",
+            balance_after_transaction=request.user.coins
+        )
+
+        return CustomResponse().successResponse(
+            data={
+                "coins": request.user.coins
+            },
+            description="Referral applied successfully"
         )
