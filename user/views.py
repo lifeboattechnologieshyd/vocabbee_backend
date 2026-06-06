@@ -1,14 +1,17 @@
 import random
 from datetime import timedelta
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster, Grades, Kids
+from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
+    PracticeAttemptAnswers
 from shared.clients.sms import send_otp_sms
+from shared.helper import get_practice_words
 from shared.utils import CustomResponse
 
 class SendOtp(APIView):
@@ -319,3 +322,154 @@ class AddKid(APIView):
             data={},
             description="Kid deleted successfully"
         )
+
+
+# Practice Mode api's
+class StartPractice(APIView):
+
+    def post(self, request):
+        kid_id = request.data.get("kid_id")
+        if not kid_id:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Kid ID is required"
+            )
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).select_related(
+            "grade"
+        ).first()
+
+        if not kid:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid kid"
+            )
+
+        attempt = PracticeAttempts.objects.create(
+            kid=kid,
+            started_at=timezone.now()
+        )
+        response = get_practice_words(kid)
+        return CustomResponse().successResponse(
+            data={
+                "attempt_id": str(attempt.id),
+                "total_questions": len(response),
+                "words": response
+            },
+            description="Practice started successfully"
+        )
+
+class SubmitPracticeAnswer(APIView):
+
+    @transaction.atomic
+    def post(self, request):
+
+        attempt_id = request.data.get(
+            "attempt_id"
+        )
+
+        word_id = request.data.get(
+            "word_id"
+        )
+
+        typed_answer = request.data.get(
+            "typed_answer",
+            ""
+        ).strip()
+
+        time_taken_seconds = request.data.get(
+            "time_taken_seconds",
+            0
+        )
+
+        is_last_question = request.data.get(
+            "is_last_question",
+            False
+        )
+
+        attempt = PracticeAttempts.objects.select_related(
+            "kid"
+        ).filter(
+            id=attempt_id
+        ).first()
+
+        if not attempt:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid attempt"
+            )
+
+        word = Words.objects.filter(
+            id=word_id,
+            is_active=True
+        ).first()
+
+        if not word:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid word"
+            )
+
+        is_correct = (
+            typed_answer.lower().strip()
+            ==
+            word.word.lower().strip()
+        )
+
+        PracticeAttemptAnswers.objects.create(
+            attempt=attempt,
+            word=word,
+            typed_answer=typed_answer,
+            is_correct=is_correct,
+            time_taken_seconds=time_taken_seconds
+        )
+
+        progress, _ = KidWordProgress.objects.get_or_create(
+            kid=attempt.kid,
+            word=word,
+            defaults={
+                "times_seen": 0,
+                "times_correct": 0
+            }
+        )
+
+        progress.times_seen += 1
+
+        if is_correct:
+            progress.times_correct += 1
+
+        progress.last_attempted_at = timezone.now()
+
+        progress.save()
+
+        attempt.total_questions += 1
+
+        if is_correct:
+
+            attempt.correct_answers += 1
+
+            # score logic can evolve later
+            attempt.score += 1
+
+        else:
+
+            attempt.wrong_answers += 1
+
+        attempt.save()
+
+        response = {
+            "is_correct": is_correct,
+            "correct_word": word.word
+        }
+        if is_last_question:
+            next_words = get_practice_words(attempt.kid)
+            response["next_words"] = next_words
+        return CustomResponse().successResponse(
+            data=response,
+            description="Answer submitted successfully"
+        )
+
+
+

@@ -266,6 +266,53 @@ class Words(AuditModel):
             )
         ]
 
+class WordAudios(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    word = models.OneToOneField(
+        Words,
+        on_delete=models.CASCADE,
+        related_name="audio"
+    )
+
+    pronunciation_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+    )
+
+    meaning_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+    )
+
+    part_of_speech_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+    )
+
+    origin_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+    )
+
+    usage_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+    )
+    class Meta:
+        db_table = "word_audios"
+
+
 class DailyChallengeWords(AuditModel):
     id = models.UUIDField(
         primary_key=True,
@@ -295,3 +342,135 @@ class DailyChallengeWords(AuditModel):
             "grade",
             "word"
         )
+
+
+class KidWordProgress(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    kid = models.ForeignKey(
+        Kids,
+        on_delete=models.CASCADE,
+        related_name="word_progress"
+    )
+
+    word = models.ForeignKey(
+        Words,
+        on_delete=models.CASCADE,
+        related_name="kid_progress"
+    )
+
+    times_seen = models.PositiveIntegerField(
+        default=0
+    )
+
+    times_correct = models.PositiveIntegerField(
+        default=0
+    )
+
+    last_attempted_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        db_table = "kid_word_progress"
+
+        unique_together = (
+            "kid",
+            "word"
+        )
+
+        indexes = [
+            models.Index(
+                fields=["kid"]
+            ),
+            models.Index(
+                fields=["word"]
+            ),
+            models.Index(
+                fields=["kid", "word"]
+            )
+        ]
+
+
+class PracticeAttempts(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    kid = models.ForeignKey(
+        Kids,
+        on_delete=models.CASCADE,
+        related_name="practice_attempts"
+    )
+    total_questions = models.PositiveIntegerField(
+        default=10
+    )
+    skipped_answers = models.PositiveIntegerField(
+        default=0
+    )
+    wrong_answers = models.PositiveIntegerField(
+        default=0
+    )
+    correct_answers = models.PositiveIntegerField(
+        default=0
+    )
+    score = models.PositiveIntegerField(
+        default=0
+    )
+    started_at = models.DateTimeField()
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+    class Meta:
+        db_table = "practice_attempts"
+
+
+class PracticeAttemptAnswers(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    attempt = models.ForeignKey(
+        PracticeAttempts,
+        on_delete=models.CASCADE,
+        related_name="answers"
+    )
+
+    word = models.ForeignKey(
+        Words,
+        on_delete=models.PROTECT
+    )
+
+    typed_answer = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
+
+    is_correct = models.BooleanField(
+        default=False
+    )
+
+    is_skipped = models.BooleanField(
+        default=False
+    )
+
+    time_taken_seconds = models.PositiveIntegerField(
+        default=0
+    )
+
+    class Meta:
+        db_table = "practice_attempt_answers"

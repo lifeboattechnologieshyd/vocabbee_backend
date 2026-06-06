@@ -62,6 +62,24 @@ class SendOtp(APIView):
             data={},
             description="OTP sent successfully"
         )
+class MakeAdmin(APIView):
+    def post(self, request):
+        mobile = request.data.get("mobile")
+        user = UserMaster.objects.filter(
+            mobile=mobile
+        ).first()
+        if not user.is_admin:
+            user.user_role = ['admin', 'parent']
+            user.save()
+            return CustomResponse().successResponse(
+                data={},
+                description="User Role changed"
+            )
+        else:
+            return CustomResponse().errorResponse(
+                data={},
+                description="You are already an admin"
+            )
 
 class VerifyOTP(APIView):
 
@@ -429,35 +447,26 @@ class WordsCrud(APIView):
             "usage",
             word_obj.usage
         )
-
         word_obj.save()
-
         return CustomResponse().successResponse(
             data={},
             description="Word updated successfully"
         )
-
     def delete(self, request):
-
         word_id = request.data.get(
             "word_id"
         )
-
         word_obj = Words.objects.filter(
             id=word_id,
             is_active=True
         ).first()
-
         if not word_obj:
             return CustomResponse().errorResponse(
                 data={},
                 description="Invalid word"
             )
-
         word_obj.is_active = False
-
         word_obj.save()
-
         return CustomResponse().successResponse(
             data={},
             description="Word deleted successfully"
