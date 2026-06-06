@@ -1,4 +1,5 @@
 from db.models.user import KidWordProgress, Words
+import random
 
 
 #######################################
@@ -71,3 +72,6 @@ def get_practice_words(kid):
                 word.audio.usage_audio_url
         })
     return response
+
+def getReferralCode():
+    return f"VR{random.randint(100000, 999999)}"

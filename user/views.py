@@ -5,13 +5,12 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
-    PracticeAttemptAnswers
+    PracticeAttemptAnswers, Referrals, CoinTransactions
 from shared.clients.sms import send_otp_sms
-from shared.helper import get_practice_words
+from shared.helper import get_practice_words, getReferralCode
 from shared.utils import CustomResponse
 
 class SendOtp(APIView):
@@ -89,23 +88,33 @@ class VerifyOTP(APIView):
             user = UserMaster.objects.create_user(
                 mobile=mobile,
                 is_mobile_verified=True,
+                referral_code=getReferralCode(),
                 user_role = ["parent"]
             )
-
         else:
             if not user.is_mobile_verified:
                 user.is_mobile_verified = True
                 user.save()
-
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
         refresh = RefreshToken.for_user(user)
+        can_apply_referral = not Referrals.objects.filter(
+            referred_user=request.user
+        ).exists()
         return CustomResponse().successResponse(
             data={
                 "user_id": str(user.id),
                 "access_token": str(refresh.access_token),
                 "refresh_token": str(refresh),
-                "is_profile_completed": bool(user.full_name)
+                "mobile": user.mobile,
+                "full_name": user.full_name,
+                "profile_image": user.profile_image,
+                "user_role": user.user_role,
+                "referral_code": user.referral_code,
+                "coins": user.coins,
+                "is_profile_completed": bool(user.full_name),
+                "can_apply_referral": can_apply_referral,
+                "kids": user.kids.count()
             },
             description="Login successful"
         )
@@ -115,6 +124,9 @@ class Profile(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
+        can_apply_referral = not Referrals.objects.filter(
+            referred_user=request.user
+        ).exists()
         return CustomResponse().successResponse(
             data={
                 "user_id": str(user.id),
@@ -122,6 +134,10 @@ class Profile(APIView):
                 "full_name": user.full_name,
                 "profile_image": user.profile_image,
                 "user_role": user.user_role,
+                "referral_code": user.referral_code,
+                "coins": user.coins,
+                "kids": user.kids.count(),
+                "can_apply_referral": can_apply_referral,
                 "is_profile_completed": user.is_profile_completed
             },
             description="Profile fetched successfully"
@@ -324,152 +340,100 @@ class AddKid(APIView):
         )
 
 
-# Practice Mode api's
-class StartPractice(APIView):
+class ApplyReferral(APIView):
 
-    def post(self, request):
-        kid_id = request.data.get("kid_id")
-        if not kid_id:
-            return CustomResponse().errorResponse(
-                data={},
-                description="Kid ID is required"
-            )
-        kid = request.user.kids.filter(
-            id=kid_id,
-            is_active=True
-        ).select_related(
-            "grade"
-        ).first()
-
-        if not kid:
-            return CustomResponse().errorResponse(
-                data={},
-                description="Invalid kid"
-            )
-
-        attempt = PracticeAttempts.objects.create(
-            kid=kid,
-            started_at=timezone.now()
-        )
-        response = get_practice_words(kid)
-        return CustomResponse().successResponse(
-            data={
-                "attempt_id": str(attempt.id),
-                "total_questions": len(response),
-                "words": response
-            },
-            description="Practice started successfully"
-        )
-
-class SubmitPracticeAnswer(APIView):
+    REFERRER_COINS = 50
+    REFERRED_USER_COINS = 25
 
     @transaction.atomic
     def post(self, request):
 
-        attempt_id = request.data.get(
-            "attempt_id"
-        )
-
-        word_id = request.data.get(
-            "word_id"
-        )
-
-        typed_answer = request.data.get(
-            "typed_answer",
+        referral_code = request.data.get(
+            "referral_code",
             ""
-        ).strip()
+        ).strip().upper()
 
-        time_taken_seconds = request.data.get(
-            "time_taken_seconds",
-            0
-        )
+        if not referral_code:
 
-        is_last_question = request.data.get(
-            "is_last_question",
-            False
-        )
-
-        attempt = PracticeAttempts.objects.select_related(
-            "kid"
-        ).filter(
-            id=attempt_id
-        ).first()
-
-        if not attempt:
             return CustomResponse().errorResponse(
                 data={},
-                description="Invalid attempt"
+                description="Referral code is required"
             )
 
-        word = Words.objects.filter(
-            id=word_id,
+        if Referrals.objects.filter(
+            referred_user=request.user
+        ).exists():
+
+            return CustomResponse().errorResponse(
+                data={},
+                description="Referral code already applied"
+            )
+
+        referrer = UserMaster.objects.filter(
+            referral_code=referral_code,
             is_active=True
         ).first()
 
-        if not word:
+        if not referrer:
+
             return CustomResponse().errorResponse(
                 data={},
-                description="Invalid word"
+                description="Invalid referral code"
             )
 
-        is_correct = (
-            typed_answer.lower().strip()
-            ==
-            word.word.lower().strip()
+        if referrer.id == request.user.id:
+
+            return CustomResponse().errorResponse(
+                data={},
+                description="You cannot use your own referral code"
+            )
+
+        referral = Referrals.objects.create(
+            referrer=referrer,
+            referred_user=request.user,
+            referral_code=referral_code,
+            reward_coins=self.REFERRER_COINS
         )
 
-        PracticeAttemptAnswers.objects.create(
-            attempt=attempt,
-            word=word,
-            typed_answer=typed_answer,
-            is_correct=is_correct,
-            time_taken_seconds=time_taken_seconds
+        referrer.coins += self.REFERRER_COINS
+
+        request.user.coins += self.REFERRED_USER_COINS
+
+        referrer.save(
+            update_fields=[
+                "coins",
+                "updated_at"
+            ]
         )
 
-        progress, _ = KidWordProgress.objects.get_or_create(
-            kid=attempt.kid,
-            word=word,
-            defaults={
-                "times_seen": 0,
-                "times_correct": 0
-            }
+        request.user.save(
+            update_fields=[
+                "coins",
+                "updated_at"
+            ]
         )
 
-        progress.times_seen += 1
+        CoinTransactions.objects.create(
+            user=referrer,
+            coins=self.REFERRER_COINS,
+            transaction_type="REFERRAL_BONUS",
+            reference_id=referral.id,
+            remarks=f"Referral reward for {request.user.mobile}",
+            balance_after_transaction=referrer.coins
+        )
 
-        if is_correct:
-            progress.times_correct += 1
+        CoinTransactions.objects.create(
+            user=request.user,
+            coins=self.REFERRED_USER_COINS,
+            transaction_type="REFERRAL_JOIN_BONUS",
+            reference_id=referral.id,
+            remarks=f"Joined using referral code {referral_code}",
+            balance_after_transaction=request.user.coins
+        )
 
-        progress.last_attempted_at = timezone.now()
-
-        progress.save()
-
-        attempt.total_questions += 1
-
-        if is_correct:
-
-            attempt.correct_answers += 1
-
-            # score logic can evolve later
-            attempt.score += 1
-
-        else:
-
-            attempt.wrong_answers += 1
-
-        attempt.save()
-
-        response = {
-            "is_correct": is_correct,
-            "correct_word": word.word
-        }
-        if is_last_question:
-            next_words = get_practice_words(attempt.kid)
-            response["next_words"] = next_words
         return CustomResponse().successResponse(
-            data=response,
-            description="Answer submitted successfully"
+            data={
+                "coins": request.user.coins
+            },
+            description="Referral applied successfully"
         )
-
-
-

@@ -100,6 +100,17 @@ class UserMaster(AbstractBaseUser):
         max_length=255,
         null=True,
     )
+    referral_code = models.CharField(
+        max_length=20,
+        unique=True,
+        db_index=True,
+        null=True,
+        blank=True
+    )
+
+    coins = models.PositiveIntegerField(
+        default=0
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -130,6 +141,88 @@ class UserMaster(AbstractBaseUser):
 
     def __str__(self):
         return str(self.mobile)
+
+class Referrals(AuditModel):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    referrer = models.ForeignKey(
+        UserMaster,
+        on_delete=models.CASCADE,
+        related_name="referrals_given"
+    )
+
+    referred_user = models.OneToOneField(
+        UserMaster,
+        on_delete=models.CASCADE,
+        related_name="referral_received"
+    )
+
+    referral_code = models.CharField(
+        max_length=20
+    )
+
+    reward_coins = models.PositiveIntegerField(
+        default=50
+    )
+
+    class Meta:
+        db_table = "referrals"
+
+
+class CoinTransactions(AuditModel):
+    TXN_TYPES = (
+        ("REFERRAL_BONUS", "REFERRAL_BONUS"),
+        ("REFERRAL_JOIN_BONUS", "REFERRAL_JOIN_BONUS"),
+        ("DAILY_STREAK", "DAILY_STREAK"),
+        ("COMPETITION_REWARD", "COMPETITION_REWARD"),
+        ("ADMIN_CREDIT", "ADMIN_CREDIT"),
+        ("HINT_USAGE", "HINT_USAGE"),
+        ("GAMEPLAY", "GAMEPLAY"),
+        ("MEMBERSHIP_PURCHASE", "MEMBERSHIP_PURCHASE"),
+    )
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    user = models.ForeignKey(
+        UserMaster,
+        on_delete=models.CASCADE,
+        related_name="coin_transactions"
+    )
+    coins = models.IntegerField()
+    transaction_type = models.CharField(
+        max_length=50
+    )
+    reference_id = models.UUIDField(
+        null=True,
+        blank=True
+    )
+    remarks = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
+    balance_after_transaction = models.PositiveIntegerField(
+        default=0
+    )
+    class Meta:
+        db_table = "coin_transactions"
+        indexes = [
+            models.Index(
+                fields=["user"]
+            ),
+            models.Index(
+                fields=["transaction_type"]
+            )
+        ]
+
+
 
 class OTPs(AuditModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
