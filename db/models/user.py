@@ -212,11 +212,15 @@ class Words(AuditModel):
     )
 
     word = models.CharField(
-        max_length=255
+        max_length=255, unique=True
     )
 
     difficulty = models.PositiveSmallIntegerField(
-        default=1
+        default=1,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5)
+        ]
     )
     meaning = models.TextField(
         blank=True,
@@ -241,6 +245,26 @@ class Words(AuditModel):
     )
     class Meta:
         db_table = "words"
+        indexes = [
+            models.Index(
+                fields=["grade"]
+            ),
+            models.Index(
+                fields=["difficulty"]
+            ),
+            models.Index(
+                fields=["is_active"]
+            ),
+            models.Index(
+                fields=["grade", "difficulty"]
+            ),
+            models.Index(
+                fields=["grade", "is_active"]
+            ),
+            models.Index(
+                fields=["word"]
+            )
+        ]
 
 class DailyChallengeWords(AuditModel):
     id = models.UUIDField(

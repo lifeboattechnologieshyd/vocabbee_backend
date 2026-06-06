@@ -237,3 +237,85 @@ class AddKid(APIView):
             data=response,
             description="Kids fetched successfully"
         )
+    def put(self, request):
+
+        kid_id = request.data.get("kid_id")
+
+        if not kid_id:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Kid ID is required"
+            )
+
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+
+        if not kid:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid kid"
+            )
+
+        name = request.data.get("name")
+        grade_id = request.data.get("grade_id")
+        profile_image = request.data.get("profile_image")
+
+        if not name:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Kid name is required"
+            )
+
+        grade = Grades.objects.filter(
+            id=grade_id,
+            is_active=True
+        ).first()
+
+        if not grade:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid grade"
+            )
+
+        kid.name = name.strip()
+        kid.grade = grade
+
+        if profile_image is not None:
+            kid.profile_image = profile_image
+
+        kid.save()
+
+        return CustomResponse().successResponse(
+            data={},
+            description="Kid updated successfully"
+        )
+
+    def delete(self, request):
+
+        kid_id = request.data.get("kid_id")
+
+        if not kid_id:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Kid ID is required"
+            )
+
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+
+        if not kid:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid kid"
+            )
+
+        kid.is_active = False
+        kid.save()
+        return CustomResponse().successResponse(
+            data={},
+            description="Kid deleted successfully"
+        )

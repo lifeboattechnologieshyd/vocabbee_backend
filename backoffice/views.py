@@ -1,11 +1,12 @@
 import random
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster, Grades
+from db.models.user import OTPs, UserMaster, Grades, Words
 from shared.clients.sms import send_otp_sms
 from shared.utils import CustomResponse
 
@@ -216,5 +217,376 @@ class GradesList(APIView):
             data={},
             description="Grade deleted successfully"
         )
+import pandas as pd
 
+class WordsCrud(APIView):
 
+    def post(self, request):
+
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+
+        grade_id = request.data.get("grade_id")
+        word = request.data.get("word")
+
+        if not grade_id:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Grade is required"
+            )
+
+        if not word:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Word is required"
+            )
+
+        grade = Grades.objects.filter(
+            id=grade_id,
+            is_active=True
+        ).first()
+
+        if not grade:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid grade"
+            )
+
+        if Words.objects.filter(
+                word__iexact=word.strip()
+        ).exists():
+            return CustomResponse().errorResponse(
+                data={},
+                description="Word already exists"
+            )
+
+        word_obj = Words.objects.create(
+            grade=grade,
+            word=word.strip(),
+            difficulty=request.data.get(
+                "difficulty",
+                1
+            ),
+            meaning=request.data.get(
+                "meaning"
+            ),
+            part_of_speech=request.data.get(
+                "part_of_speech"
+            ),
+            origin=request.data.get(
+                "origin"
+            ),
+            usage=request.data.get(
+                "usage"
+            )
+        )
+
+        return CustomResponse().successResponse(
+            data={
+                "word_id": str(word_obj.id)
+            },
+            description="Word created successfully"
+        )
+
+    def get(self, request):
+
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+        page = int(request.GET.get("page", 1))
+        page_size = int(request.GET.get("page_size", 20))
+        search = request.GET.get("search")
+        grade_id = request.GET.get("grade_id")
+        difficulty = request.GET.get("difficulty")
+
+        words = Words.objects.filter(
+            is_active=True
+        ).select_related(
+            "grade"
+        )
+
+        if grade_id:
+            words = words.filter(
+                grade_id=grade_id
+            )
+
+        if difficulty:
+            words = words.filter(
+                difficulty=difficulty
+            )
+
+        if search:
+            words = words.filter(
+                Q(word__icontains=search)
+                |
+                Q(meaning__icontains=search)
+            )
+        total_count = words.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        words = words.order_by(
+            "word"
+        )[start:end]
+        response = []
+        for word in words:
+            response.append({
+                "word_id": str(word.id),
+                "word": word.word,
+                "difficulty": word.difficulty,
+                "meaning": word.meaning,
+                "part_of_speech": word.part_of_speech,
+                "origin": word.origin,
+                "usage": word.usage,
+                "grade": {
+                    "id": str(word.grade.id),
+                    "name": word.grade.name
+                }
+            })
+
+        return CustomResponse().successResponse(
+            data=response,
+            total=total_count,
+            description="Words fetched successfully"
+        )
+
+    def put(self, request):
+
+        word_id = request.data.get(
+            "word_id"
+        )
+
+        word_obj = Words.objects.filter(
+            id=word_id,
+            is_active=True
+        ).first()
+
+        if not word_obj:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid word"
+            )
+
+        grade_id = request.data.get(
+            "grade_id"
+        )
+
+        grade = Grades.objects.filter(
+            id=grade_id,
+            is_active=True
+        ).first()
+
+        if not grade:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid grade"
+            )
+
+        new_word = request.data.get(
+            "word"
+        )
+
+        duplicate = Words.objects.filter(
+            word__iexact=new_word
+        ).exclude(
+            id=word_obj.id
+        ).exists()
+
+        if duplicate:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Word already exists"
+            )
+
+        word_obj.word = new_word.strip()
+        word_obj.grade = grade
+
+        word_obj.difficulty = request.data.get(
+            "difficulty",
+            word_obj.difficulty
+        )
+
+        word_obj.meaning = request.data.get(
+            "meaning",
+            word_obj.meaning
+        )
+
+        word_obj.part_of_speech = request.data.get(
+            "part_of_speech",
+            word_obj.part_of_speech
+        )
+
+        word_obj.origin = request.data.get(
+            "origin",
+            word_obj.origin
+        )
+
+        word_obj.usage = request.data.get(
+            "usage",
+            word_obj.usage
+        )
+
+        word_obj.save()
+
+        return CustomResponse().successResponse(
+            data={},
+            description="Word updated successfully"
+        )
+
+    def delete(self, request):
+
+        word_id = request.data.get(
+            "word_id"
+        )
+
+        word_obj = Words.objects.filter(
+            id=word_id,
+            is_active=True
+        ).first()
+
+        if not word_obj:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid word"
+            )
+
+        word_obj.is_active = False
+
+        word_obj.save()
+
+        return CustomResponse().successResponse(
+            data={},
+            description="Word deleted successfully"
+        )
+
+class UploadWords(APIView):
+
+    def post(self, request):
+
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+
+        file = request.FILES.get("file")
+
+        if not file:
+            return CustomResponse().errorResponse(
+                data={},
+                description="File is required"
+            )
+
+        try:
+
+            df = pd.read_excel(file)
+            required_columns = [
+                "Grade",
+                "Word",
+                "Difficulty"
+            ]
+            missing_columns = [
+                column
+                for column in required_columns
+                if column not in df.columns
+            ]
+
+            if missing_columns:
+
+                return CustomResponse().errorResponse(
+                    data={},
+                    description=f"Missing columns: {', '.join(missing_columns)}"
+                )
+
+            grades_map = {
+                grade.name.strip().lower(): grade
+                for grade in Grades.objects.filter(
+                    is_active=True
+                )
+            }
+
+            existing_words = set(
+                Words.objects.filter(
+                    is_active=True
+                ).values_list(
+                    "word",
+                    flat=True
+                )
+            )
+
+            words_to_create = []
+
+            skipped_count = 0
+
+            for _, row in df.iterrows():
+
+                grade_name = str(
+                    row["Grade"]
+                ).strip()
+
+                word = str(
+                    row["Word"]
+                ).strip()
+
+                if not word:
+                    continue
+
+                grade = grades_map.get(
+                    grade_name.lower()
+                )
+
+                if not grade:
+                    skipped_count += 1
+                    continue
+
+                if word in existing_words:
+                    skipped_count += 1
+                    continue
+
+                words_to_create.append(
+                    Words(
+                        grade=grade,
+                        word=word,
+                        difficulty=row.get(
+                            "Difficulty",
+                            1
+                        ),
+                        meaning=row.get(
+                            "Meaning"
+                        ),
+                        part_of_speech=row.get(
+                            "Part Of Speech"
+                        ),
+                        origin=row.get(
+                            "Origin"
+                        ),
+                        usage=row.get(
+                            "Usage"
+                        )
+                    )
+                )
+
+                existing_words.add(word)
+
+            Words.objects.bulk_create(
+                words_to_create,
+                batch_size=1000
+            )
+
+            return CustomResponse().successResponse(
+                data={
+                    "created_count": len(words_to_create),
+                    "skipped_count": skipped_count
+                },
+                description="Words uploaded successfully"
+            )
+
+        except Exception as e:
+            return CustomResponse().errorResponse(
+                data={},
+                description=str(e)
+            )

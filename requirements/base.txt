@@ -37,6 +37,11 @@ requests>=2.32.0
 # crum
 django-crum==0.7.9
 
+# pandas
+
+pandas==3.0.3
+openpyxl==3.1.5
+
 # Observability
 opentelemetry-api==1.31.*
 opentelemetry-sdk==1.31.*
