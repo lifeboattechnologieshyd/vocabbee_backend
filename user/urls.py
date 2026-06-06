@@ -1,8 +1,7 @@
 from django.urls import path
 
 from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion, EndPractice, PracticeStats
-from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid
-
+from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
@@ -10,7 +9,7 @@ urlpatterns = [
     path("profile", Profile.as_view()),
     path("grades", GradesList.as_view()),
     path("kids", AddKid.as_view()),
-    path("apply/referral", AddKid.as_view()),
+    path("apply/referral", ApplyReferral.as_view()),
 
     path("practice/start", StartPractice.as_view()),
     path("practice/submit-answer", SubmitPracticeAnswer.as_view()),

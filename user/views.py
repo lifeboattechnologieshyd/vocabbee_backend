@@ -99,7 +99,7 @@ class VerifyOTP(APIView):
         user.save(update_fields=["last_login_at"])
         refresh = RefreshToken.for_user(user)
         can_apply_referral = not Referrals.objects.filter(
-            referred_user=request.user
+            referred_user=user
         ).exists()
         return CustomResponse().successResponse(
             data={
