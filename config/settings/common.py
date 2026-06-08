@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "django_filters",
     "storages",
     "django_structlog",
+    "django_crontab",
     # health checks
     "health_check",  # required
     # "health_check.db",  # stock Django health checkers
@@ -265,5 +266,16 @@ DJANGO_STRUCTLOG_STATUS_4XX_LOG_LEVEL = logging.INFO
 DJANGO_STRUCTLOG_USER_ID_FIELD = "id"
 
 DEBUG = True
+
+
+
+CRONJOBS = [
+    # Every day at 12:05 AM generate_word_voices
+    ("5 0 * * *","django.core.management.call_command",["generate_word_voices"],),
+
+   # Every day at 12:05 AM schedule_daily_words
+    ("5 0 * * *","django.core.management.call_command",["schedule_daily_words"],),
+]
+
 
 

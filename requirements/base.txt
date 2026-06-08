@@ -42,6 +42,15 @@ django-crum==0.7.9
 pandas==3.0.3
 openpyxl==3.1.5
 
+# text-to-speech
+gTTS==2.5.*
+# Gemini AI SDK
+google-genai>=1.0.0,<2.0.0
+# text-to-speech
+google-cloud-texttospeech==2.18.0
+# crons
+django-crontab==0.7.*
+
 # Observability
 opentelemetry-api==1.31.*
 opentelemetry-sdk==1.31.*
