@@ -1,14 +1,22 @@
 import random
 from datetime import timedelta
 
+from django.core.files.storage import default_storage
+from django.conf import settings
+from rest_framework.parsers import FormParser, MultiPartParser
+
+from rest_framework import status
+
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
     PracticeAttemptAnswers, Referrals, CoinTransactions
+from shared.clients.s3 import add_unique_suffix_to_filename, sanitize_filename
+from django.core.files.base import ContentFile
 from shared.clients.sms import send_otp_sms
 from shared.helper import get_practice_words, getReferralCode
 from shared.utils import CustomResponse
@@ -437,3 +445,36 @@ class ApplyReferral(APIView):
             },
             description="Referral applied successfully"
         )
+
+class FileUploadView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files")
+        path = request.data.get("path", "temp")
+
+        if not files:
+            return CustomResponse().successResponse(
+                {"error": "No file was provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        uploaded_files = []
+
+        try:
+            for file_obj in files:
+                # Save each file to the default storage
+                sanitized_filename = add_unique_suffix_to_filename(sanitize_filename(file_obj.name))
+
+                file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
+                file_url = settings.MEDIA_URL + file_path
+                uploaded_files.append(
+                    {"original_filename": file_obj.name, "file_url": file_url, "file_path": file_path}
+                )
+
+            return CustomResponse().successResponse(uploaded_files, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return CustomResponse().errorResponse(
+                {"error": str(e)}, description="File upload failed", status=status.HTTP_400_BAD_REQUEST
+            )
