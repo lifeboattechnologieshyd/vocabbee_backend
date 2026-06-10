@@ -5,6 +5,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from crum import get_current_request
+from django.template.defaultfilters import default
 
 
 class TimeAuditModel(models.Model):
@@ -291,7 +292,10 @@ class Kids(AuditModel):
         db_table = "kids"
 
 class Words(AuditModel):
-
+    VOICE_STATUS = (
+        ("GENERATED", "GENERATED"),
+        ("PENDING", "PENDING"),
+    )
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
@@ -336,6 +340,14 @@ class Words(AuditModel):
     is_active = models.BooleanField(
         default=True
     )
+    voice_status = models.CharField(
+        max_length=20,
+        choices=VOICE_STATUS,
+        default="PENDING",
+        db_index=True
+    )
+
+
     class Meta:
         db_table = "words"
         indexes = [

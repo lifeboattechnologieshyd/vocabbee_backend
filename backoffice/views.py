@@ -264,11 +264,11 @@ class WordsAudio(APIView):
                 description="Unauthorized"
             )
         word_id = request.data.get("word_id")
-        word = Words.objects.filter(id=word_id).first()
+        word = Words.objects.filter(id=word_id, status='PENDING').first()
         if not word:
             return CustomResponse().errorResponse(
                 data={},
-                description="No Word found with provided ID"
+                description="No Word found with provided ID or already generated"
             )
         data = import_word_from_schoolfirst(word.word)
         if not data:
@@ -292,7 +292,7 @@ class WordsAudio(APIView):
         word.meaning = data["meaning"]
         word.part_of_speech = data["part_of_speech"]
         word.origin = data["origin"]
-        word.save()
+
 
         WordAudios.objects.update_or_create(
             word=word,
@@ -304,6 +304,8 @@ class WordsAudio(APIView):
                 "usage_audio_url":u_a_u,
             }
         )
+        word.status = "GENERATED"
+        word.save()
         return CustomResponse().successResponse(
             data={},
             description="Audio files generated."
