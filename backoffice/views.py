@@ -1,5 +1,7 @@
+import os
 import random
 from datetime import timedelta
+from io import BytesIO
 from urllib.parse import urlparse
 
 import requests
@@ -13,6 +15,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios
+from shared.clients.s3 import save_to_s3
 from shared.clients.sms import send_otp_sms
 from shared.helper import import_word_from_schoolfirst
 from shared.utils import CustomResponse
@@ -243,49 +246,54 @@ import pandas as pd
 
 class WordsAudio(APIView):
 
-    def download_file_from_s3(self, url):
-        # Download audio
+    def download_file_from_s3(self, url, word):
         audio_response = requests.get(url)
         audio_response.raise_for_status()
-        # Generate filename
-        parsed = urlparse(url)
-        file_name = parsed.path.split("/")[-1]
-        # Upload to new bucket
-        s3.put_object(
-            Bucket=settings.AWS_S3_BUCKET,
-            Key=file_name,
-            Body=audio_response.content,
-            ContentType="audio/mpeg"
+        audio_file = BytesIO(audio_response.content)
+        filename = os.path.basename(urlparse(url).path)
+        audio_file.name = filename
+        return save_to_s3(
+            path="words",
+            file_obj=audio_file
         )
-        new_url = f"https://{settings.AWS_S3_BUCKET}.s3.amazonaws.com/{file_name}"
-        return new_url
 
-    permission_classes = [AllowAny]
     def post(self, request):
-        # if not request.user.is_admin:
-        #     return CustomResponse().errorResponse(
-        #         data={},
-        #         description="Unauthorized"
-        #     )
-        word = "role"
-        # word_id = request.data.get("word_id")
-        # word = Words.objects.filter(id=word_id).first()
-        # if not word:
-        #     return CustomResponse().errorResponse(
-        #         data={},
-        #         description="No Word found with provided ID"
-        #     )
-        data = import_word_from_schoolfirst(word)
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+        word_id = request.data.get("word_id")
+        word = Words.objects.filter(id=word_id).first()
+        if not word:
+            return CustomResponse().errorResponse(
+                data={},
+                description="No Word found with provided ID"
+            )
+        data = import_word_from_schoolfirst(word.word)
+        if not data:
+            return CustomResponse().errorResponse(
+                data={},
+                description="No Word found in School First"
+            )
+
         pronunciation_audio_url = data["pronunciation_audio"]
         meaning_audio_url = data["meaning_audio"]
         part_of_speech_audio_url = data["part_of_speech_audio"]
         origin_audio_url = data["origin_audio"]
         usage_audio_url = data["usage_audio"]
-        p_a_u = self.download_file_from_s3(pronunciation_audio_url)
-        m_a_u = self.download_file_from_s3(meaning_audio_url)
-        ps_a_u = self.download_file_from_s3(part_of_speech_audio_url)
-        o_a_u = self.download_file_from_s3(origin_audio_url)
-        u_a_u = self.download_file_from_s3(usage_audio_url)
+        p_a_u = self.download_file_from_s3(pronunciation_audio_url, word)
+        m_a_u = self.download_file_from_s3(meaning_audio_url, word)
+        ps_a_u = self.download_file_from_s3(part_of_speech_audio_url, word)
+        o_a_u = self.download_file_from_s3(origin_audio_url, word)
+        u_a_u = self.download_file_from_s3(usage_audio_url, word)
+
+        word.usage = data["usage"]
+        word.meaning = data["meaning"]
+        word.part_of_speech = data["part_of_speech"]
+        word.origin = data["origin"]
+        word.save()
+
         WordAudios.objects.update_or_create(
             word=word,
             defaults={
@@ -303,8 +311,6 @@ class WordsAudio(APIView):
 
 
 class WordsCrud(APIView):
-
-    permission_classes = [AllowAny]
 
     def post(self, request):
         if not request.user.is_admin:
@@ -360,7 +366,6 @@ class WordsCrud(APIView):
                 "usage"
             )
         )
-
         return CustomResponse().successResponse(
             data={
                 "word_id": str(word_obj.id)

@@ -1,6 +1,9 @@
 import re
 import uuid
 
+from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 
 def sanitize_filename(filename):
@@ -22,3 +25,10 @@ def add_unique_suffix_to_filename(filename: str, length=8):
         else f"{filename_list[0]}_{unique_suffix}"
     )
     return new_filename
+
+
+def save_to_s3(path, file_obj):
+    sanitized_filename = add_unique_suffix_to_filename(sanitize_filename(file_obj.name))
+    file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
+    file_url = settings.MEDIA_URL + file_path
+    return {"original_filename": file_obj.name, "file_url": file_url, "file_path": file_path}

@@ -88,6 +88,9 @@ def import_word_from_schoolfirst(word_text):
         timeout=20
     )
     if response.status_code != 200:
-        return False
-    data = response.json()["data"]
-    return data
+        return None
+    data = response.json()
+    if data["success"]:
+        return data["data"]
+    else:
+        return None
