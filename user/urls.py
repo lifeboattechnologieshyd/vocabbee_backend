@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion, EndPractice, PracticeStats
-from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral
+from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
@@ -17,6 +17,8 @@ urlpatterns = [
     path("practice/end", EndPractice.as_view()),
 
     path("practice/stats", PracticeStats.as_view()),
+
+    path("file/upload",FileUploadView.as_view()),
 
 
 ]
