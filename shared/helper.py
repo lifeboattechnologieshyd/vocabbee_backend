@@ -78,10 +78,7 @@ def getReferralCode():
 
 
 
-def import_word_from_schoolfirst(
-    word_text,
-    grade
-):
+def import_word_from_schoolfirst(word_text):
 
     response = requests.get(
         "https://api.schoolfirst.ai/vocabee/api/word",
@@ -90,45 +87,7 @@ def import_word_from_schoolfirst(
         },
         timeout=20
     )
-
     if response.status_code != 200:
         return False
-
     data = response.json()["data"]
-
-    word_obj, _ = (
-        Words.objects.update_or_create(
-            word=data["word"],
-            defaults={
-                "grade": grade,
-                "difficulty":
-                    data["difficulty"],
-                "meaning":
-                    data["meaning"],
-                "part_of_speech":
-                    data["part_of_speech"],
-                "origin":
-                    data["origin"],
-                "usage":
-                    data["usage"],
-            }
-        )
-    )
-
-    WordAudios.objects.update_or_create(
-        word=word_obj,
-        defaults={
-            "pronunciation_audio_url":
-                data["pronunciation_audio"],
-            "meaning_audio_url":
-                data["meaning_audio"],
-            "part_of_speech_audio_url":
-                data["part_of_speech_audio"],
-            "origin_audio_url":
-                data["origin_audio"],
-            "usage_audio_url":
-                data["usage_audio"],
-        }
-    )
-
-    return True
+    return data

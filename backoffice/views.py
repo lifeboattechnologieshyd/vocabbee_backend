@@ -1,13 +1,20 @@
 import random
 from datetime import timedelta
+from urllib.parse import urlparse
 
+import requests
+from boto3 import s3
+from boto3.s3.inject import download_file
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster, Grades, Words
+from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios
 from shared.clients.sms import send_otp_sms
+from shared.helper import import_word_from_schoolfirst
 from shared.utils import CustomResponse
 
 class SendOtp(APIView):
@@ -234,42 +241,98 @@ class GradesList(APIView):
         )
 import pandas as pd
 
+class WordsAudio(APIView):
+
+    def download_file_from_s3(self, url):
+        # Download audio
+        audio_response = requests.get(url)
+        audio_response.raise_for_status()
+        # Generate filename
+        parsed = urlparse(url)
+        file_name = parsed.path.split("/")[-1]
+        # Upload to new bucket
+        s3.put_object(
+            Bucket=settings.AWS_S3_BUCKET,
+            Key=file_name,
+            Body=audio_response.content,
+            ContentType="audio/mpeg"
+        )
+        new_url = f"https://{settings.AWS_S3_BUCKET}.s3.amazonaws.com/{file_name}"
+        return new_url
+
+    permission_classes = [AllowAny]
+    def post(self, request):
+        # if not request.user.is_admin:
+        #     return CustomResponse().errorResponse(
+        #         data={},
+        #         description="Unauthorized"
+        #     )
+        word = "role"
+        # word_id = request.data.get("word_id")
+        # word = Words.objects.filter(id=word_id).first()
+        # if not word:
+        #     return CustomResponse().errorResponse(
+        #         data={},
+        #         description="No Word found with provided ID"
+        #     )
+        data = import_word_from_schoolfirst(word)
+        pronunciation_audio_url = data["pronunciation_audio"]
+        meaning_audio_url = data["meaning_audio"]
+        part_of_speech_audio_url = data["part_of_speech_audio"]
+        origin_audio_url = data["origin_audio"]
+        usage_audio_url = data["usage_audio"]
+        p_a_u = self.download_file_from_s3(pronunciation_audio_url)
+        m_a_u = self.download_file_from_s3(meaning_audio_url)
+        ps_a_u = self.download_file_from_s3(part_of_speech_audio_url)
+        o_a_u = self.download_file_from_s3(origin_audio_url)
+        u_a_u = self.download_file_from_s3(usage_audio_url)
+        WordAudios.objects.update_or_create(
+            word=word,
+            defaults={
+                "pronunciation_audio_url": p_a_u,
+                "meaning_audio_url": m_a_u,
+                "part_of_speech_audio_url": ps_a_u,
+                "origin_audio_url":o_a_u,
+                "usage_audio_url":u_a_u,
+            }
+        )
+        return CustomResponse().successResponse(
+            data={},
+            description="Audio files generated."
+        )
+
+
 class WordsCrud(APIView):
 
-    def post(self, request):
+    permission_classes = [AllowAny]
 
+    def post(self, request):
         if not request.user.is_admin:
             return CustomResponse().errorResponse(
                 data={},
                 description="Unauthorized"
             )
-
         grade_id = request.data.get("grade_id")
         word = request.data.get("word")
-
         if not grade_id:
             return CustomResponse().errorResponse(
                 data={},
                 description="Grade is required"
             )
-
         if not word:
             return CustomResponse().errorResponse(
                 data={},
                 description="Word is required"
             )
-
         grade = Grades.objects.filter(
             id=grade_id,
             is_active=True
         ).first()
-
         if not grade:
             return CustomResponse().errorResponse(
                 data={},
                 description="Invalid grade"
             )
-
         if Words.objects.filter(
                 word__iexact=word.strip()
         ).exists():
@@ -277,7 +340,6 @@ class WordsCrud(APIView):
                 data={},
                 description="Word already exists"
             )
-
         word_obj = Words.objects.create(
             grade=grade,
             word=word.strip(),
