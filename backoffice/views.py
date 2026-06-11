@@ -450,7 +450,7 @@ class WordsCrud(APIView):
                 "part_of_speech": word.part_of_speech,
                 "origin": word.origin,
                 "usage": word.usage,
-                "status": word.status,
+                "status": word.voice_status,
                 "grade": {
                     "id": str(word.grade.id),
                     "name": word.grade.name
