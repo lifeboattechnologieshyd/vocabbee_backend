@@ -62,6 +62,10 @@ def get_practice_words(kid):
         response.append({
             "word_id": str(word.id),
             "word": str(word.word),
+            "meaning": str(word.meaning),
+            "part_of_speech": str(word.part_of_speech),
+            "origin": str(word.origin),
+            "usage": str(word.usage),
             "pronunciation_audio_url":
                 word.audio.pronunciation_audio_url,
             "meaning_audio_url":
