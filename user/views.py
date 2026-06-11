@@ -156,6 +156,8 @@ class Profile(APIView):
         user = request.user
         full_name = request.data.get("full_name")
         profile_image = request.data.get("profile_image")
+        gender = request.data.get("gender")
+        dob = request.data.get("dob")
 
         if not full_name:
             return CustomResponse().errorResponse(
@@ -167,6 +169,10 @@ class Profile(APIView):
 
         if profile_image is not None:
             user.profile_image = profile_image
+        if gender is not None:
+            user.gender = gender
+        if dob is not None:
+            user.dob = dob
 
         user.save()
 
@@ -177,6 +183,8 @@ class Profile(APIView):
                 "full_name": user.full_name,
                 "profile_image": user.profile_image,
                 "user_role": user.user_role,
+                "gender": user.gender,
+                "dob": user.dob,
                 "is_profile_completed": True
             },
             description="Profile updated successfully"

@@ -78,6 +78,16 @@ class UserMaster(AbstractBaseUser):
         blank=True,
         null=True
     )
+    gender = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+    dob = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
     profile_image = models.CharField(
         max_length=500,
         blank=True,
