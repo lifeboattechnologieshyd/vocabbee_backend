@@ -294,17 +294,6 @@ def getWordAudio(word: Words):
 
 class WordsAudio(APIView):
 
-    def download_file_from_s3(self, url, word):
-        audio_response = requests.get(url)
-        audio_response.raise_for_status()
-        audio_file = BytesIO(audio_response.content)
-        filename = os.path.basename(urlparse(url).path)
-        audio_file.name = filename
-        return save_to_s3(
-            path="words",
-            file_obj=audio_file
-        )
-
     def post(self, request):
         if not request.user.is_admin:
             return CustomResponse().errorResponse(

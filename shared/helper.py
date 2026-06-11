@@ -21,7 +21,8 @@ def get_practice_words(kid):
     selected_words = list(
         Words.objects.filter(
             grade=kid.grade,
-            is_active=True
+            is_active=True,
+            voice_status='GENERATED'
         ).select_related(
             "audio"
         ).exclude(
@@ -42,7 +43,8 @@ def get_practice_words(kid):
         additional_words = list(
             Words.objects.filter(
                 grade=kid.grade,
-                is_active=True
+                is_active=True,
+                voice_status='GENERATED'
             ).select_related(
                 "audio"
             ).exclude(
