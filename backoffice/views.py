@@ -301,7 +301,7 @@ class WordsAudio(APIView):
                 description="Unauthorized"
             )
         word_id = request.data.get("word_id")
-        word = Words.objects.filter(id=word_id, status='PENDING').first()
+        word = Words.objects.filter(id=word_id, voice_status='PENDING').first()
         if not word:
             return CustomResponse().errorResponse(
                 data={},
