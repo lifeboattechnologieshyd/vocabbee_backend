@@ -413,3 +413,35 @@ class PracticeStats(APIView):
             },
             description="Practice stats fetched successfully"
         )
+
+class PracticeHistoryAPIView(APIView):
+
+    def get(self, request):
+        kid_id = request.GET.get(
+            "kid_id"
+        )
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+        if not kid:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid kid"
+            )
+        practice_attempts = PracticeAttempts.objects.filter(
+            kid=kid
+        ).values(
+            "id",
+            "total_questions",
+            "correct_answers",
+            "wrong_answers",
+            "skipped_answers",
+            "score",
+            "started_at",
+            "completed_at"
+        ).order_by("-started_at")
+        return CustomResponse().errorResponse(
+                data=list(practice_attempts),
+                description="Success"
+            )

@@ -83,6 +83,11 @@ class UserMaster(AbstractBaseUser):
         blank=True,
         null=True
     )
+    email = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
     dob = models.CharField(
         max_length=20,
         blank=True,
