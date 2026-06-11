@@ -287,7 +287,7 @@ def getWordAudio(word: Words):
             "usage_audio_url": u_a_u,
         }
     )
-    word.status = "GENERATED"
+    word.voice_status = "GENERATED"
     word.save()
     return True, "Audio files generated."
 
