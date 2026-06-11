@@ -31,4 +31,4 @@ def save_to_s3(path, file_obj):
     sanitized_filename = add_unique_suffix_to_filename(sanitize_filename(file_obj.name))
     file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
     file_url = settings.MEDIA_URL + file_path
-    return {"original_filename": file_obj.name, "file_url": file_url, "file_path": file_path}
+    return file_url
