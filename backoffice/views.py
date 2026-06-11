@@ -244,6 +244,54 @@ class GradesList(APIView):
         )
 import pandas as pd
 
+
+def download_file_from_s3(url, word):
+    audio_response = requests.get(url)
+    audio_response.raise_for_status()
+    audio_file = BytesIO(audio_response.content)
+    filename = os.path.basename(urlparse(url).path)
+    audio_file.name = filename
+    return save_to_s3(
+        path="words",
+        file_obj=audio_file
+    )
+
+def getWordAudio(word: Words):
+    data = import_word_from_schoolfirst(word.word)
+    if not data:
+        # todo- we have to use google ai or tts to generate audio
+        return False, "No Word found in SchoolFirst"
+    pronunciation_audio_url = data["pronunciation_audio"]
+    meaning_audio_url = data["meaning_audio"]
+    part_of_speech_audio_url = data["part_of_speech_audio"]
+    origin_audio_url = data["origin_audio"]
+    usage_audio_url = data["usage_audio"]
+    p_a_u = download_file_from_s3(pronunciation_audio_url, word)
+    m_a_u = download_file_from_s3(meaning_audio_url, word)
+    ps_a_u = download_file_from_s3(part_of_speech_audio_url, word)
+    o_a_u = download_file_from_s3(origin_audio_url, word)
+    u_a_u = download_file_from_s3(usage_audio_url, word)
+
+    word.usage = data["usage"]
+    word.meaning = data["meaning"]
+    word.part_of_speech = data["part_of_speech"]
+    word.origin = data["origin"]
+
+    WordAudios.objects.update_or_create(
+        word=word,
+        defaults={
+            "pronunciation_audio_url": p_a_u,
+            "meaning_audio_url": m_a_u,
+            "part_of_speech_audio_url": ps_a_u,
+            "origin_audio_url": o_a_u,
+            "usage_audio_url": u_a_u,
+        }
+    )
+    word.status = "GENERATED"
+    word.save()
+    return True, "Audio files generated."
+
+
 class WordsAudio(APIView):
 
     def download_file_from_s3(self, url, word):
@@ -270,46 +318,18 @@ class WordsAudio(APIView):
                 data={},
                 description="No Word found with provided ID or already generated"
             )
-        data = import_word_from_schoolfirst(word.word)
-        if not data:
+        resp = getWordAudio(word)
+        if resp[0]:
+            return CustomResponse().successResponse(
+                data={},
+                description="Audio files generated."
+            )
+        else:
             return CustomResponse().errorResponse(
                 data={},
-                description="No Word found in School First"
+                description=resp[1]
             )
 
-        pronunciation_audio_url = data["pronunciation_audio"]
-        meaning_audio_url = data["meaning_audio"]
-        part_of_speech_audio_url = data["part_of_speech_audio"]
-        origin_audio_url = data["origin_audio"]
-        usage_audio_url = data["usage_audio"]
-        p_a_u = self.download_file_from_s3(pronunciation_audio_url, word)
-        m_a_u = self.download_file_from_s3(meaning_audio_url, word)
-        ps_a_u = self.download_file_from_s3(part_of_speech_audio_url, word)
-        o_a_u = self.download_file_from_s3(origin_audio_url, word)
-        u_a_u = self.download_file_from_s3(usage_audio_url, word)
-
-        word.usage = data["usage"]
-        word.meaning = data["meaning"]
-        word.part_of_speech = data["part_of_speech"]
-        word.origin = data["origin"]
-
-
-        WordAudios.objects.update_or_create(
-            word=word,
-            defaults={
-                "pronunciation_audio_url": p_a_u,
-                "meaning_audio_url": m_a_u,
-                "part_of_speech_audio_url": ps_a_u,
-                "origin_audio_url":o_a_u,
-                "usage_audio_url":u_a_u,
-            }
-        )
-        word.status = "GENERATED"
-        word.save()
-        return CustomResponse().successResponse(
-            data={},
-            description="Audio files generated."
-        )
 
 
 class WordsCrud(APIView):
@@ -368,9 +388,12 @@ class WordsCrud(APIView):
                 "usage"
             )
         )
+        resp = getWordAudio(word)
         return CustomResponse().successResponse(
             data={
-                "word_id": str(word_obj.id)
+                "word_id": str(word_obj.id),
+                "audio_generated": resp[0],
+                "audio_description": resp[1],
             },
             description="Word created successfully"
         )
@@ -391,7 +414,8 @@ class WordsCrud(APIView):
         words = Words.objects.filter(
             is_active=True
         ).select_related(
-            "grade"
+            "grade",
+            "audio"
         )
 
         if grade_id:
@@ -418,7 +442,7 @@ class WordsCrud(APIView):
         )[start:end]
         response = []
         for word in words:
-            response.append({
+            word_details = {
                 "word_id": str(word.id),
                 "word": word.word,
                 "difficulty": word.difficulty,
@@ -426,11 +450,19 @@ class WordsCrud(APIView):
                 "part_of_speech": word.part_of_speech,
                 "origin": word.origin,
                 "usage": word.usage,
+                "status": word.status,
                 "grade": {
                     "id": str(word.grade.id),
                     "name": word.grade.name
                 }
-            })
+            }
+            if hasattr(word, "audio"):
+                word_details["pronunciation_audio_url"] = word.audio.pronunciation_audio_url
+                word_details["meaning_audio_url"] = word.audio.meaning_audio_url
+                word_details["part_of_speech_audio_url"] = word.audio.part_of_speech_audio_url
+                word_details["origin_audio_url"] = word.audio.origin_audio_url
+                word_details["usage_audio_url"] = word.audio.usage_audio_url
+            response.append(word_details)
 
         return CustomResponse().successResponse(
             data=response,
