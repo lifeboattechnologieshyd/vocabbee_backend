@@ -377,7 +377,7 @@ class WordsCrud(APIView):
                 "usage"
             )
         )
-        resp = getWordAudio(word)
+        resp = getWordAudio(word_obj)
         return CustomResponse().successResponse(
             data={
                 "word_id": str(word_obj.id),
