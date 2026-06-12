@@ -41,7 +41,7 @@ class SendOtp(APIView):
                 description="Please wait before requesting another OTP"
             )
         otp = str(random.randint(1000, 9999))
-        otp = "1234"
+        # otp = "1234"
         OTPs.objects.filter(
             mobile_number=mobile,
             is_active=True
