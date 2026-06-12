@@ -8,15 +8,16 @@ from db.models.user import Grades, DailyChallengeWords, Words
 
 logger = structlog.get_logger("default")
 
-WORDS_PER_DAY = 10
+WORDS_PER_DAY = 1
 
 
 class Command(BaseCommand):
     help = "Schedule daily challenge words for all grades"
 
     def handle(self, *args, **options):
-
+        print("daily ch")
         today = timezone.localdate()
+        print(today)
 
         logger.info(
             "Starting daily challenge words scheduling",
@@ -26,7 +27,7 @@ class Command(BaseCommand):
         grades = Grades.objects.filter(
             is_active=True
         )
-
+        print(grades)
         for grade in grades:
 
             existing_today = DailyChallengeWords.objects.filter(
