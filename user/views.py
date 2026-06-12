@@ -144,6 +144,9 @@ class Profile(APIView):
                 "user_role": user.user_role,
                 "referral_code": user.referral_code,
                 "coins": user.coins,
+                "dob": user.dob,
+                "email": user.email,
+                "gender": user.gender,
                 "kids": user.kids.count(),
                 "can_apply_referral": can_apply_referral,
                 "is_profile_completed": user.is_profile_completed
