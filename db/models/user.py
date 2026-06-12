@@ -536,7 +536,7 @@ class PracticeAttempts(AuditModel):
         related_name="practice_attempts"
     )
     total_questions = models.PositiveIntegerField(
-        default=10
+        default=0
     )
     skipped_answers = models.PositiveIntegerField(
         default=0
