@@ -441,7 +441,36 @@ class PracticeHistoryAPIView(APIView):
             "started_at",
             "completed_at"
         ).order_by("-started_at")
-        return CustomResponse().errorResponse(
+        return CustomResponse().successResponse(
                 data=list(practice_attempts),
                 description="Success"
             )
+
+class HomeStats(APIView):
+
+
+    def get(self, request):
+        total_words = Words.objects.count()
+        kid_id = request.GET.get(
+            "kid_id"
+        )
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+        if not kid:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid kid"
+            )
+        mastered_words = KidWordProgress.objects.filter(
+            kid=kid,
+            is_mastered=True
+        ).count()
+        return CustomResponse().successResponse(
+            data={
+                "total_words": total_words,
+                "mastered_words":mastered_words
+            },
+            description="Success"
+        )
