@@ -10,6 +10,7 @@ from boto3.s3.inject import download_file
 from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -582,13 +583,16 @@ class WordsCrud(APIView):
 
 class UploadWords(APIView):
 
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request):
 
-        if not request.user.is_admin:
-            return CustomResponse().errorResponse(
-                data={},
-                description="Unauthorized"
-            )
+        # if not request.user.is_admin:
+        #     return CustomResponse().errorResponse(
+        #         data={},
+        #         description="Unauthorized"
+        #     )
 
         file = request.FILES.get("file")
 
