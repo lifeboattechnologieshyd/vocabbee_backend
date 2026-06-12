@@ -332,6 +332,8 @@ class WordsCrud(APIView):
         grade_id = request.data.get("grade_id")
         word = request.data.get("word")
         subject = request.data.get("subject")
+        concept = request.data.get("concept")
+        hint = request.data.get("hint")
         if not grade_id:
             return CustomResponse().errorResponse(
                 data={},
@@ -365,6 +367,9 @@ class WordsCrud(APIView):
                 "difficulty",
                 1
             ),
+            subject=subject,
+            concept=concept,
+            hint=hint,
             meaning=request.data.get(
                 "meaning"
             ),
@@ -436,6 +441,8 @@ class WordsCrud(APIView):
                 "word_id": str(word.id),
                 "word": word.word,
                 "subject": word.subject,
+                "concept": word.concept,
+                "hint": word.hint,
                 "difficulty": word.difficulty,
                 "meaning": word.meaning,
                 "part_of_speech": word.part_of_speech,
@@ -539,6 +546,14 @@ class WordsCrud(APIView):
         word_obj.usage = request.data.get(
             "usage",
             word_obj.usage
+        )
+        word_obj.usage = request.data.get(
+            "hint",
+            word_obj.hint
+        )
+        word_obj.usage = request.data.get(
+            "concept",
+            word_obj.concept
         )
         word_obj.save()
         return CustomResponse().successResponse(
@@ -657,8 +672,9 @@ class UploadWords(APIView):
                             "Difficulty",
                             1
                         ),
-                        subject=row.get('Subject',
-                                        'English'),
+                        subject=row.get('Subject','English'),
+                        concept=row.get('Concept',None),
+                        hint=row.get('Hint',None),
                         meaning=row.get(
                             "Meaning"
                         ),

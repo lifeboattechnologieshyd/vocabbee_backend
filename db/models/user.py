@@ -329,6 +329,8 @@ class Words(AuditModel):
     subject = models.CharField(
         max_length=255, default="English"
     )
+    concept = models.CharField(max_length=255, null=True)
+    hint = models.CharField(max_length=500, null=True)
     difficulty = models.PositiveSmallIntegerField(
         default=1,
         validators=[
