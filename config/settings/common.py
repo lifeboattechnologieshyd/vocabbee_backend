@@ -274,8 +274,10 @@ CRONJOBS = [
     ("5 0 * * *","django.core.management.call_command",["generate_word_voices"],),
 
    # Every day at 12:05 AM schedule_daily_words
-    ("5 0 * * *","django.core.management.call_command",["schedule_daily_words"],),
+    ("*/1 * * * *","django.core.management.call_command",["schedule_daily_words"],">> /tmp/schedule_daily_words.log 2>&1"),
 ]
 
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
