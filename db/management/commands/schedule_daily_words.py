@@ -98,7 +98,7 @@ class Command(BaseCommand):
 
                 DailyChallengeWords.objects.bulk_create(
                     challenge_words,
-                    ignore_conflicts=True
+                    # ignore_conflicts=True
                 )
 
             logger.info(
