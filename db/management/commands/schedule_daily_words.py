@@ -22,6 +22,9 @@ class Command(BaseCommand):
 
         with open("/tmp/schedule_cron_test.log", "a") as f:
             f.write(f"Executed at {datetime.now()}\n")
+            from django.conf import settings
+
+            f.write(str(settings.DATABASES["default"]) + "\n")
 
         today = timezone.localdate()
 
