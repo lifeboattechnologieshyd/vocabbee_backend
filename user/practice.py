@@ -266,24 +266,17 @@ class EndPractice(APIView):
             return CustomResponse().successResponse(
                 data={
                     "attempt_id": str(attempt.id),
-
                     "score": attempt.score,
-
                     "total_questions":
                         attempt.total_questions,
-
                     "correct_answers":
                         attempt.correct_answers,
-
                     "wrong_answers":
                         attempt.wrong_answers,
-
                     "skipped_answers":
                         attempt.skipped_answers,
-
                     "started_at":
                         attempt.started_at,
-
                     "completed_at":
                         attempt.completed_at
                 },

@@ -467,6 +467,77 @@ class DailyChallengeWords(AuditModel):
             "word"
         )
 
+class DailyChallengeAttempts(AuditModel):
+    STATUS = (
+        ("IN_PROGRESS", "IN_PROGRESS"),
+        ("COMPLETED", "COMPLETED"),
+    )
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    kid = models.ForeignKey(
+        Kids,
+        on_delete=models.CASCADE,
+        related_name="daily_challenge_attempts"
+    )
+    challenge_date = models.DateField()
+    grade = models.ForeignKey(
+        Grades,
+        on_delete=models.PROTECT
+    )
+    total_words = models.IntegerField(
+        default=10
+    )
+    attempted_words = models.IntegerField(
+        default=0
+    )
+    correct_words = models.IntegerField(
+        default=0
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS,
+        default="IN_PROGRESS"
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        db_table = "daily_challenge_attempts"
+        unique_together = (
+            "kid",
+            "challenge_date"
+        )
+
+class DailyChallengeWordAttempts(AuditModel):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    challenge_attempt = models.ForeignKey(
+        DailyChallengeAttempts,
+        on_delete=models.CASCADE,
+        related_name="word_attempts"
+    )
+    word = models.ForeignKey(
+        Words,
+        on_delete=models.PROTECT
+    )
+    is_correct = models.BooleanField()
+    attempted_at = models.DateTimeField(
+        auto_now_add=True
+    )
+    class Meta:
+        db_table = "daily_challenge_word_attempts"
+        unique_together = (
+            "challenge_attempt",
+            "word"
+        )
 
 class KidWordProgress(AuditModel):
 
