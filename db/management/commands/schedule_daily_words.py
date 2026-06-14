@@ -16,15 +16,20 @@ from django.conf import settings
 
 print(settings.DATABASES["default"])
 class Command(BaseCommand):
+
     help = "Schedule daily challenge words for all grades"
 
     def handle(self, *args, **options):
 
-        with open("/tmp/schedule_cron_test.log", "a") as f:
-            f.write(f"Executed at {datetime.now()}\n")
-            from django.conf import settings
+        print("CRON STARTED")
 
-            f.write(str(settings.DATABASES["default"]) + "\n")
+        raise Exception("CRON TEST")
+
+        with open("/tmp/schedule_cron_test.log", "a") as f:
+
+            f.write(f"Executed at {datetime.now()}\n")
+
+        print("daily ch")
 
         today = timezone.localdate()
 
