@@ -20,9 +20,9 @@ jobs:
         run: |
           ssh-keyscan -H "${{ secrets.VOCABBEE_EC2_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2
+      - name: Execute script on EC2
         run: |
-          ssh "${{ secrets.VOCABBEE_EC2_USER }}@${{ secrets.VOCABBEE_EC2_HOST }}" << 'EOF'
+          ssh ${{ secrets.VOCABBEE_EC2_USER }}@${{ secrets.VOCABBEE_EC2_HOST }} << EOF
           set -e
 
           cd /home/ubuntu/vocabbee_backend
@@ -32,17 +32,17 @@ jobs:
 
           docker network create vocabbee-network || true
 
+          # Remove old containers if they exist
+          docker rm -f vocabbee-backend || true
+          docker rm -f vocabbee-postgres || true
+
+          # Start services
           docker compose \
-            -p vocabbee \
             -f deploy/compose/docker-compose.yaml \
             --env-file .env.docker \
-            down || true
+            up -d --build --remove-orphans
 
-          docker compose \
-            -p vocabbee \
-            -f deploy/compose/docker-compose.yaml \
-            --env-file .env.docker \
-            up -d --build
-
+          # Remove unused images
           docker image prune -f
+
           EOF
