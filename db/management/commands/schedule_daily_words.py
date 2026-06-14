@@ -19,9 +19,13 @@ class Command(BaseCommand):
 
     help = "Schedule daily challenge words for all grades"
 
+    from datetime import datetime
+
     def handle(self, *args, **options):
 
-        print("CRON STARTED")
+        with open("/tmp/cron_called.log", "a") as f:
+
+            f.write(f"CALLED {datetime.now()}\n")
 
         raise Exception("CRON TEST")
 
