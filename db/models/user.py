@@ -513,7 +513,7 @@ class DailyChallengeAttempts(AuditModel):
             "challenge_date"
         )
 
-class DailyChallengeWordAttempts(AuditModel):
+class DailyChallengeAttemptAnswers(AuditModel):
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
@@ -528,12 +528,17 @@ class DailyChallengeWordAttempts(AuditModel):
         Words,
         on_delete=models.PROTECT
     )
+    typed_answer = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
     is_correct = models.BooleanField()
     attempted_at = models.DateTimeField(
         auto_now_add=True
     )
     class Meta:
-        db_table = "daily_challenge_word_attempts"
+        db_table = "daily_challenge_attempt_answers"
         unique_together = (
             "challenge_attempt",
             "word"

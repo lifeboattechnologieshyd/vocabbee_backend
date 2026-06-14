@@ -3,7 +3,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from db.models import DailyChallengeWords
-from db.models.user import DailyChallengeAttempts, Kids
+from db.models.user import DailyChallengeAttempts, Kids, DailyChallengeAttemptAnswers, WordAudios
 from shared.utils import CustomResponse
 
 
@@ -59,7 +59,122 @@ class DailyChallengesAPIView(APIView):
             )
         return CustomResponse.successResponse(data=results,
                                                   description="")
-class GetWords(APIView):
 
-    def get(self, request):
-        pass
+class DailyChallengeWordsAPIView(APIView):
+
+    def post(self, request):
+        kid_id = request.data.get("kid_id")
+        challenge_date = request.data.get("challenge_date")
+        if not kid_id:
+            return CustomResponse.errorResponse(
+                description="kid_id is required"
+            )
+        if not challenge_date:
+            return CustomResponse.errorResponse(
+                description="challenge_date is required"
+            )
+        try:
+            kid = Kids.objects.select_related(
+                "grade"
+            ).get(
+                id=kid_id
+            )
+        except Kids.DoesNotExist:
+            return CustomResponse.errorResponse(
+                description="Kid not found"
+            )
+        attempt, created = DailyChallengeAttempts.objects.get_or_create(
+            kid=kid,
+            challenge_date=challenge_date,
+            defaults={
+                "grade": kid.grade,
+                "status": "IN_PROGRESS"
+            }
+        )
+        attempted_word_ids = DailyChallengeAttemptAnswers.objects.filter(
+            attempt=attempt
+        ).values_list(
+            "word_id",
+            flat=True
+        )
+
+        challenge_words = (
+            DailyChallengeWords.objects
+            .filter(
+                challenge_date=challenge_date,
+                grade=kid.grade,
+                is_active=True
+            )
+            .exclude(
+                word_id__in=attempted_word_ids
+            )
+            .select_related(
+                "word",
+                "word__audio"
+            )
+            .order_by(
+                "order"
+            )
+        )
+        words = []
+        for challenge_word in challenge_words:
+            word = challenge_word.word
+            try:
+                audio = word.audio
+            except WordAudios.DoesNotExist:
+                audio = None
+            words.append(
+                {
+                    "id": str(word.id),
+                    "word": word.word,
+                    "subject": word.subject,
+                    "concept": word.concept,
+                    "hint": word.hint,
+                    "difficulty": word.difficulty,
+                    "meaning": word.meaning,
+                    "part_of_speech": word.part_of_speech,
+                    "origin": word.origin,
+                    "usage": word.usage,
+                    "audios": {
+                        "pronunciation_audio_url": (
+                            audio.pronunciation_audio_url
+                            if audio else None
+                        ),
+                        "meaning_audio_url": (
+                            audio.meaning_audio_url
+                            if audio else None
+                        ),
+                        "part_of_speech_audio_url": (
+                            audio.part_of_speech_audio_url
+                            if audio else None
+                        ),
+                        "origin_audio_url": (
+                            audio.origin_audio_url
+                            if audio else None
+                        ),
+                        "usage_audio_url": (
+                            audio.usage_audio_url
+                            if audio else None
+                        )
+                    }
+                }
+            )
+        total_words = 10
+        attempted_words = len(
+            attempted_word_ids
+        )
+        remaining_words = len(
+            words
+        )
+        return CustomResponse.successResponse(
+            data={
+                "attempt_id": str(attempt.id),
+                "challenge_date": challenge_date,
+                "status": attempt.status,
+                "total_words": total_words,
+                "attempted_words": attempted_words,
+                "remaining_words": remaining_words,
+                "words": words
+            },
+            description="Daily challenge words fetched successfully"
+        )
