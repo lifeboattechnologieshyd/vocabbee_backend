@@ -495,3 +495,6 @@ class FileUploadView(APIView):
             return CustomResponse().errorResponse(
                 {"error": str(e)}, description="File upload failed", status=status.HTTP_400_BAD_REQUEST
             )
+
+
+
