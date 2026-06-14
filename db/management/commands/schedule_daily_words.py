@@ -12,7 +12,9 @@ WORDS_PER_DAY = 1
 from datetime import datetime
 
 from datetime import datetime
+from django.conf import settings
 
+print(settings.DATABASES["default"])
 class Command(BaseCommand):
     help = "Schedule daily challenge words for all grades"
 
