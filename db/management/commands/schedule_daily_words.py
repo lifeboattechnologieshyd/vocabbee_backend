@@ -11,27 +11,32 @@ logger = structlog.get_logger("default")
 WORDS_PER_DAY = 1
 from datetime import datetime
 
+from datetime import datetime
+
 class Command(BaseCommand):
     help = "Schedule daily challenge words for all grades"
 
     def handle(self, *args, **options):
-        with open("/tmp/schedule_cron_test.log", "a") as f:
 
+        with open("/tmp/schedule_cron_test.log", "a") as f:
             f.write(f"Executed at {datetime.now()}\n")
-        print("daily ch")
+
         today = timezone.localdate()
-        print(today)
+
+        print("=" * 60)
+        print(f"Today: {today}")
 
         logger.info(
             "Starting daily challenge words scheduling",
             date=str(today)
         )
 
-        grades = Grades.objects.filter(
-            is_active=True
-        )
-        print(grades)
+        grades = Grades.objects.filter(is_active=True)
+
         for grade in grades:
+
+            print("=" * 60)
+            print(f"Grade: {grade.name}")
 
             existing_today = DailyChallengeWords.objects.filter(
                 grade=grade,
@@ -39,7 +44,11 @@ class Command(BaseCommand):
                 is_active=True
             ).count()
 
+            print(f"Existing Today: {existing_today}")
+
             words_needed = WORDS_PER_DAY - existing_today
+
+            print(f"Words Needed: {words_needed}")
 
             if words_needed <= 0:
                 logger.info(
@@ -49,12 +58,16 @@ class Command(BaseCommand):
                 )
                 continue
 
-            used_word_ids = DailyChallengeWords.objects.filter(
-                grade=grade
-            ).values_list(
-                "word_id",
-                flat=True
+            used_word_ids = list(
+                DailyChallengeWords.objects.filter(
+                    grade=grade
+                ).values_list(
+                    "word_id",
+                    flat=True
+                )
             )
+
+            print(f"Used Words: {len(used_word_ids)}")
 
             available_words = (
                 Words.objects
@@ -65,7 +78,17 @@ class Command(BaseCommand):
                 .exclude(
                     id__in=used_word_ids
                 )
-                .order_by("?")[:words_needed]
+                .order_by("?")
+            )
+
+            print(
+                f"Available Words Before Slice: {available_words.count()}"
+            )
+
+            available_words = available_words[:words_needed]
+
+            print(
+                f"Available Words After Slice: {available_words.count()}"
             )
 
             if not available_words.exists():
@@ -76,36 +99,44 @@ class Command(BaseCommand):
                 )
                 continue
 
+            challenge_words = []
+
+            start_order = existing_today + 1
+
+            for index, word in enumerate(
+                available_words,
+                start=start_order
+            ):
+                challenge_words.append(
+                    DailyChallengeWords(
+                        challenge_date=today,
+                        grade=grade,
+                        word=word,
+                        order=index,
+                        is_active=True
+                    )
+                )
+
+            print(f"Prepared Objects: {len(challenge_words)}")
+
             with transaction.atomic():
 
-                challenge_words = []
-
-                start_order = existing_today + 1
-
-                for index, word in enumerate(
-                    available_words,
-                    start=start_order
-                ):
-                    challenge_words.append(
-                        DailyChallengeWords(
-                            challenge_date=today,
-                            grade=grade,
-                            word=word,
-                            order=index,
-                            is_active=True
-                        )
-                    )
-
                 DailyChallengeWords.objects.bulk_create(
-                    challenge_words,
-                    # ignore_conflicts=True
+                    challenge_words
                 )
+
+            inserted = DailyChallengeWords.objects.filter(
+                challenge_date=today,
+                grade=grade
+            ).count()
+
+            print(f"Inserted Rows: {inserted}")
 
             logger.info(
                 "Challenge words scheduled",
                 grade_id=str(grade.id),
                 grade_name=grade.name,
-                words_count=len(challenge_words)
+                inserted=inserted
             )
 
         logger.info(
