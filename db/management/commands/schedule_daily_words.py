@@ -9,12 +9,15 @@ from db.models.user import Grades, DailyChallengeWords, Words
 logger = structlog.get_logger("default")
 
 WORDS_PER_DAY = 1
-
+from datetime import datetime
 
 class Command(BaseCommand):
     help = "Schedule daily challenge words for all grades"
 
     def handle(self, *args, **options):
+        with open("/tmp/schedule_cron_test.log", "a") as f:
+
+            f.write(f"Executed at {datetime.now()}\n")
         print("daily ch")
         today = timezone.localdate()
         print(today)
