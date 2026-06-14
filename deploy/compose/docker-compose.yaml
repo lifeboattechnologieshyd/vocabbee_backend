@@ -61,6 +61,8 @@ services:
 
 volumes:
   pg_data:
+    external: true
+    name: vocabbee_pg_data
 
 networks:
   vocabbee-network:
