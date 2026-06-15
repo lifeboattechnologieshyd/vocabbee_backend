@@ -29,6 +29,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
+        import os
+
+        with open("/tmp/cron_db_env.log", "w") as f:
+
+            f.write(f"POSTGRES_DB={os.environ.get('POSTGRES_DB')}\n")
+
+            f.write(f"POSTGRES_HOST={os.environ.get('POSTGRES_HOST')}\n")
+
+            f.write(f"POSTGRES_USER={os.environ.get('POSTGRES_USER')}\n")
+
+            f.write(f"POSTGRES_PASSWORD={repr(os.environ.get('POSTGRES_PASSWORD'))}\n")
+
+            f.write(f"POSTGRES_PORT={os.environ.get('POSTGRES_PORT')}\n")
+
         self.log("=" * 80)
         self.log("CRON STARTED")
 
