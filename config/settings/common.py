@@ -287,6 +287,7 @@ CRONJOBS = [
         {},
         ">> /tmp/test_cron_output.log 2>&1",
     ),
+    ("*/1 * * * *", "django.core.management.call_command", ["test_env"]),
 
 
 ]
