@@ -2,15 +2,17 @@
 set -e
 
 echo "Starting Vocabbee backend..."
-echo "Port: ${PORT:-8000}"
-echo "Project root: /project"
 
 cd /project
 
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+# Export container environment for cron
+printenv > /etc/environment
+
 echo "Installing cron jobs..."
+python manage.py crontab remove || true
 python manage.py crontab add
 
 echo "Starting cron..."
