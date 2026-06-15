@@ -11,7 +11,14 @@ from db.models.user import Grades, DailyChallengeWords, Words
 logger = structlog.get_logger("default")
 
 WORDS_PER_DAY = 1
+import os
 
+with open("/tmp/env_debug.log", "a") as f:
+    f.write("=" * 50 + "\n")
+    f.write(f"HOST={os.environ.get('POSTGRES_HOST')}\n")
+    f.write(f"PORT={os.environ.get('POSTGRES_PORT')}\n")
+    f.write(f"DB={os.environ.get('POSTGRES_DB')}\n")
+    f.write(f"USER={os.environ.get('POSTGRES_USER')}\n")
 
 class Command(BaseCommand):
     help = "Schedule daily challenge words for all grades"
