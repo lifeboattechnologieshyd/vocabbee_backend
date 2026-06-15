@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -9,145 +11,127 @@ from db.models.user import Grades, DailyChallengeWords, Words
 logger = structlog.get_logger("default")
 
 WORDS_PER_DAY = 1
-from datetime import datetime
 
-from datetime import datetime
-from django.conf import settings
 
-print(settings.DATABASES["default"])
 class Command(BaseCommand):
     help = "Schedule daily challenge words for all grades"
 
+    def log(self, message):
+        with open("/tmp/schedule_daily_words_debug.log", "a") as f:
+            f.write(f"{datetime.now()} : {message}\n")
+
     def handle(self, *args, **options):
 
-        with open("/tmp/schedule_cron_test.log", "a") as f:
-            f.write(f"Executed at {datetime.now()}\n")
-            from django.conf import settings
+        self.log("=" * 80)
+        self.log("CRON STARTED")
 
-            f.write(str(settings.DATABASES["default"]) + "\n")
+        try:
+            today = timezone.localdate()
+            self.log(f"Today = {today}")
 
-        today = timezone.localdate()
+            grades = Grades.objects.filter(is_active=True)
 
-        print("=" * 60)
-        print(f"Today: {today}")
+            self.log(f"Active Grades Count = {grades.count()}")
 
-        logger.info(
-            "Starting daily challenge words scheduling",
-            date=str(today)
-        )
+            for grade in grades:
 
-        grades = Grades.objects.filter(is_active=True)
+                self.log("-" * 50)
+                self.log(f"Processing Grade = {grade.id} - {grade.name}")
 
-        for grade in grades:
-
-            print("=" * 60)
-            print(f"Grade: {grade.name}")
-
-            existing_today = DailyChallengeWords.objects.filter(
-                grade=grade,
-                challenge_date=today,
-                is_active=True
-            ).count()
-
-            print(f"Existing Today: {existing_today}")
-
-            words_needed = WORDS_PER_DAY - existing_today
-
-            print(f"Words Needed: {words_needed}")
-
-            if words_needed <= 0:
-                logger.info(
-                    "Daily challenge words already scheduled",
-                    grade_id=str(grade.id),
-                    count=existing_today
-                )
-                continue
-
-            used_word_ids = list(
-                DailyChallengeWords.objects.filter(
-                    grade=grade
-                ).values_list(
-                    "word_id",
-                    flat=True
-                )
-            )
-
-            print(f"Used Words: {len(used_word_ids)}")
-
-            available_words = (
-                Words.objects
-                .filter(
+                existing_today = DailyChallengeWords.objects.filter(
                     grade=grade,
-                    is_active=True
+                    challenge_date=today,
+                    is_active=True,
+                ).count()
+
+                self.log(f"Existing Today = {existing_today}")
+
+                words_needed = WORDS_PER_DAY - existing_today
+
+                self.log(f"Words Needed = {words_needed}")
+
+                if words_needed <= 0:
+                    self.log("Already scheduled. Skipping.")
+                    continue
+
+                used_word_ids = list(
+                    DailyChallengeWords.objects.filter(
+                        grade=grade
+                    ).values_list("word_id", flat=True)
                 )
-                .exclude(
-                    id__in=used_word_ids
-                )
-                .order_by("?")
-            )
 
-            print(
-                f"Available Words Before Slice: {available_words.count()}"
-            )
+                self.log(f"Used Word IDs Count = {len(used_word_ids)}")
 
-            available_words = available_words[:words_needed]
-
-            print(
-                f"Available Words After Slice: {available_words.count()}"
-            )
-
-            if not available_words.exists():
-                logger.warning(
-                    "No unused words available",
-                    grade_id=str(grade.id),
-                    grade_name=grade.name
-                )
-                continue
-
-            challenge_words = []
-
-            start_order = existing_today + 1
-
-            for index, word in enumerate(
-                available_words,
-                start=start_order
-            ):
-                challenge_words.append(
-                    DailyChallengeWords(
-                        challenge_date=today,
+                available_words = (
+                    Words.objects.filter(
                         grade=grade,
-                        word=word,
-                        order=index,
-                        is_active=True
+                        is_active=True,
                     )
+                    .exclude(id__in=used_word_ids)
+                    .order_by("?")
                 )
 
-            print(f"Prepared Objects: {len(challenge_words)}")
-
-            with transaction.atomic():
-
-                DailyChallengeWords.objects.bulk_create(
-                    challenge_words
+                self.log(
+                    f"Available Before Slice = {available_words.count()}"
                 )
 
-            inserted = DailyChallengeWords.objects.filter(
-                challenge_date=today,
-                grade=grade
-            ).count()
+                available_words = list(available_words[:words_needed])
 
-            print(f"Inserted Rows: {inserted}")
+                self.log(
+                    f"Available After Slice = {len(available_words)}"
+                )
 
-            logger.info(
-                "Challenge words scheduled",
-                grade_id=str(grade.id),
-                grade_name=grade.name,
-                inserted=inserted
-            )
+                if len(available_words) == 0:
+                    self.log("No available words. Skipping.")
+                    continue
 
-        logger.info(
-            "Daily challenge words scheduling completed",
-            date=str(today)
-        )
+                challenge_words = []
+
+                start_order = existing_today + 1
+
+                for index, word in enumerate(
+                    available_words,
+                    start=start_order,
+                ):
+                    self.log(
+                        f"Preparing Word = {word.id} {word.word}"
+                    )
+
+                    challenge_words.append(
+                        DailyChallengeWords(
+                            challenge_date=today,
+                            grade=grade,
+                            word=word,
+                            order=index,
+                            is_active=True,
+                        )
+                    )
+
+                self.log(
+                    f"Prepared Objects = {len(challenge_words)}"
+                )
+
+                with transaction.atomic():
+                    DailyChallengeWords.objects.bulk_create(
+                        challenge_words
+                    )
+
+                inserted = DailyChallengeWords.objects.filter(
+                    challenge_date=today,
+                    grade=grade,
+                    is_active=True,
+                ).count()
+
+                self.log(f"Inserted Rows = {inserted}")
+
+            self.log("CRON COMPLETED SUCCESSFULLY")
+
+        except Exception as e:
+            import traceback
+
+            self.log(f"ERROR = {str(e)}")
+            self.log(traceback.format_exc())
+            raise
 
         self.stdout.write(
             self.style.SUCCESS(
