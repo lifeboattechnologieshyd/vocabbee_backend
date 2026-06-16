@@ -97,7 +97,7 @@ class DailyChallengeWordsAPIView(APIView):
             }
         )
         attempted_word_ids = DailyChallengeAttemptAnswers.objects.filter(
-            attempt=attempt
+            challenge_attempt=attempt
         ).values_list(
             "word_id",
             flat=True
