@@ -120,15 +120,18 @@ TEMPLATES = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB_NAME"),
-        "USER": os.environ.get("POSTGRES_DB_USER"),
-        "PASSWORD": os.environ.get("POSTGRES_DB_PASSWORD"),
-        "HOST": os.environ.get("POSTGRES_DB_HOST"),
-        "PORT": os.environ.get("POSTGRES_DB_PORT"),
+        "NAME": os.environ.get("POSTGRES_DB"),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "HOST": os.environ.get("POSTGRES_HOST"),
+        "PORT": os.environ.get("POSTGRES_PORT"),
         "OPTIONS": (
             {}
             if os.environ.get("POSTGRES_DB_SSL_ENABLED", "False") == "False"
-            else {"sslmode": "verify-full", "sslrootcert": "./postgresql_ssl_cert.pem"}
+            else {
+                "sslmode": "verify-full",
+                "sslrootcert": "./postgresql_ssl_cert.pem",
+            }
         ),
     }
 }
@@ -274,7 +277,19 @@ CRONJOBS = [
     ("5 0 * * *","django.core.management.call_command",["generate_word_voices"],),
 
    # Every day at 12:05 AM schedule_daily_words
-    ("*/1 * * * *","django.core.management.call_command",["schedule_daily_words"],">> /tmp/schedule_daily_words.log 2>&1"),
+    ("*/1 * * * *","django.core.management.call_command",["schedule_daily_words"],),
+
+
+    (
+        "*/1 * * * *",
+        "django.core.management.call_command",
+        ["test_cron"],
+        {},
+        ">> /tmp/test_cron_output.log 2>&1",
+    ),
+    ("*/1 * * * *", "django.core.management.call_command", ["test_env"]),
+
+
 ]
 
 
