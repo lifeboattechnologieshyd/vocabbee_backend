@@ -1,9 +1,14 @@
+from datetime import timedelta
+
+from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from db.models import DailyChallengeWords
-from db.models.user import DailyChallengeAttempts, Kids, DailyChallengeAttemptAnswers, WordAudios
+from db.models.user import DailyChallengeAttempts, Kids, DailyChallengeAttemptAnswers, WordAudios, Words, \
+    KidWordProgress
 from shared.utils import CustomResponse
 
 
@@ -177,4 +182,242 @@ class DailyChallengeWordsAPIView(APIView):
                 "words": words
             },
             description="Daily challenge words fetched successfully"
+        )
+
+
+class DailyChallengeSubmitAPIView(APIView):
+
+    @transaction.atomic
+    def post(self, request):
+        attempt_id = request.data.get("attempt_id")
+        word_id = request.data.get("word_id")
+        typed_answer = request.data.get("typed_answer")
+        if not attempt_id:
+            return CustomResponse.errorResponse(
+                description="attempt_id is required"
+            )
+        if not word_id:
+            return CustomResponse.errorResponse(
+                description="word_id is required"
+            )
+        if not typed_answer:
+            return CustomResponse.errorResponse(
+                description="typed_answer is required"
+            )
+        try:
+            attempt = (
+                DailyChallengeAttempts.objects
+                .select_for_update()
+                .select_related(
+                    "kid",
+                    "grade"
+                )
+                .get(id=attempt_id)
+            )
+        except DailyChallengeAttempts.DoesNotExist:
+            return CustomResponse.errorResponse(
+                description="Attempt not found"
+            )
+        try:
+            word = Words.objects.get(
+                id=word_id
+            )
+        except Words.DoesNotExist:
+            return CustomResponse.errorResponse(
+                description="Word not found"
+            )
+        already_answered = (
+            DailyChallengeAttemptAnswers.objects.filter(
+                challenge_attempt=attempt,
+                word=word
+            ).exists()
+        )
+        if already_answered:
+            return CustomResponse.errorResponse(
+                description="Word already submitted"
+            )
+        normalized_answer = typed_answer.strip().lower()
+        correct_word = word.word.strip().lower()
+        is_correct = normalized_answer == correct_word
+        DailyChallengeAttemptAnswers.objects.create(
+            challenge_attempt=attempt,
+            word=word,
+            typed_answer=typed_answer,
+            is_correct=is_correct
+        )
+        # -----------------------------------
+        # Update Daily Challenge Attempt
+        # -----------------------------------
+        attempt.attempted_words += 1
+        if is_correct:
+            attempt.correct_words += 1
+        challenge_completed = False
+        percentage = None
+        if attempt.attempted_words >= attempt.total_words:
+            challenge_completed = True
+            percentage = round((attempt.correct_words /attempt.total_words) * 100,
+                2
+            ) if attempt.total_words else 0
+            attempt.status = "COMPLETED"
+            attempt.completed_at = timezone.now()
+        attempt.save()
+        # -----------------------------------
+        # Update Kid Progress
+        # -----------------------------------
+        progress, _ = (
+            KidWordProgress.objects.get_or_create(
+                kid=attempt.kid,
+                word=word
+            )
+        )
+        progress.times_seen += 1
+        if is_correct:
+            progress.times_correct += 1
+        progress.last_attempted_at = timezone.now()
+        progress.save()
+        return CustomResponse.successResponse(
+            data={
+                "is_correct": is_correct,
+                "correct_word": word.word,
+                "typed_answer": typed_answer,
+                "attempted_words": attempt.attempted_words,
+                "correct_words": attempt.correct_words,
+                "remaining_words": attempt.total_words - attempt.attempted_words,
+                "total_words": attempt.total_words,
+                "challenge_completed": challenge_completed,
+                "percentage": percentage
+            },
+            description="Answer submitted successfully"
+        )
+
+class DailyChallengeResultAPIView(APIView):
+    def get(self, request):
+        attempt_id = request.GET.get(
+            "attempt_id"
+        )
+        try:
+            attempt = (
+                DailyChallengeAttempts.objects
+                .get(
+                    id=attempt_id
+                )
+            )
+        except DailyChallengeAttempts.DoesNotExist:
+            return CustomResponse.errorResponse(
+                description="Attempt not found"
+            )
+        wrong_answers = (
+            DailyChallengeAttemptAnswers.objects
+            .filter(
+                challenge_attempt=attempt,
+                is_correct=False
+            )
+            .select_related(
+                "word"
+            )
+        )
+        wrong_words = []
+        for answer in wrong_answers:
+            wrong_words.append({
+                "word": answer.word.word,
+                "typed_answer": answer.typed_answer
+            })
+        accuracy = round((attempt.correct_words / attempt.total_words) * 100,
+            2
+        ) if attempt.total_words else 0
+        return CustomResponse.successResponse(
+            data={
+                "challenge_date": attempt.challenge_date,
+                "score": attempt.correct_words,
+                "total_words": attempt.total_words,
+                "accuracy": accuracy,
+                "wrong_words": wrong_words
+            },
+            description="Result fetched successfully"
+        )
+
+class DailyChallengeStatsAPIView(APIView):
+
+    def get(self, request):
+        kid_id = request.GET.get("kid_id")
+        try:
+            kid = Kids.objects.get(
+                id=kid_id
+            )
+        except Kids.DoesNotExist:
+            return CustomResponse.errorResponse(
+                description="Kid not found"
+            )
+        attempts = (
+            DailyChallengeAttempts.objects
+            .filter(
+                kid=kid,
+                status="COMPLETED"
+            )
+            .order_by(
+                "challenge_date"
+            )
+        )
+        completed_challenges = attempts.count()
+        total_words_attempted = (
+            attempts.aggregate(
+                total=Sum("attempted_words")
+            )["total"] or 0
+        )
+        total_words_correct = (
+            attempts.aggregate(
+                total=Sum("correct_words")
+            )["total"] or 0
+        )
+        average_accuracy = round(
+            (
+                total_words_correct /
+                total_words_attempted
+            ) * 100,
+            2
+        ) if total_words_attempted else 0
+        dates = list(
+            attempts.values_list(
+                "challenge_date",
+                flat=True
+            )
+        )
+        current_streak = 0
+        best_streak = 0
+        running_streak = 0
+        previous_date = None
+        for challenge_date in dates:
+            if (
+                previous_date and
+                (challenge_date - previous_date).days == 1
+            ):
+                running_streak += 1
+            else:
+                running_streak = 1
+            best_streak = max(
+                best_streak,
+                running_streak
+            )
+            previous_date = challenge_date
+        today = timezone.localdate()
+        streak_date = today
+
+        while DailyChallengeAttempts.objects.filter(
+            kid=kid,
+            challenge_date=streak_date,
+            status="COMPLETED"
+        ).exists():
+            current_streak += 1
+            streak_date -= timedelta(days=1)
+
+        return CustomResponse.successResponse(
+            data={
+                "completed_challenges": completed_challenges,
+                "current_streak": current_streak,
+                "best_streak": best_streak,
+                "average_accuracy": average_accuracy,
+                "total_words_attempted": total_words_attempted,
+                "total_words_correct": total_words_correct
+            },
+            description="Stats fetched successfully"
         )
