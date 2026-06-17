@@ -10,7 +10,7 @@ from db.models.user import Grades, DailyChallengeWords, Words
 
 logger = structlog.get_logger("default")
 
-WORDS_PER_DAY = 1
+WORDS_PER_DAY = 10
 import os
 
 with open("/tmp/env_debug.log", "a") as f:

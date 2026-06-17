@@ -274,20 +274,13 @@ DEBUG = True
 
 CRONJOBS = [
     # Every day at 12:05 AM generate_word_voices
-    ("5 0 * * *","django.core.management.call_command",["generate_word_voices"],),
+    # ("5 0 * * *","django.core.management.call_command",["generate_word_voices"],),
 
    # Every day at 12:05 AM schedule_daily_words
-    ("*/1 * * * *","django.core.management.call_command",["schedule_daily_words"],),
+    ("5 0 * * *","django.core.management.call_command",["schedule_daily_words"],),
 
 
-    (
-        "*/1 * * * *",
-        "django.core.management.call_command",
-        ["test_cron"],
-        {},
-        ">> /tmp/test_cron_output.log 2>&1",
-    ),
-    ("*/1 * * * *", "django.core.management.call_command", ["test_env"]),
+
 
 
 ]
