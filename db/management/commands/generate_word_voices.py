@@ -31,15 +31,21 @@ class Command(BaseCommand):
                 texttospeech.TextToSpeechClient()
             )
 
-            print("TTS Client Initialized Successfully")
+            print(
+                "TTS Client Initialized Successfully",
+                flush=True
+            )
 
         except Exception as e:
-
-            print(f"TTS Client Initialization Failed : {e}")
 
             logger.error(
                 "Failed to initialize TTS client",
                 error=str(e)
+            )
+
+            print(
+                f"TTS Initialization Failed : {e}",
+                flush=True
             )
 
             return
@@ -51,14 +57,20 @@ class Command(BaseCommand):
             )[:1000]
         )
 
-        if not pending_words.exists():
+        total_count = pending_words.count()
 
-            print("No Pending Words Found")
+        if total_count == 0:
+
+            print(
+                "No Pending Words Found",
+                flush=True
+            )
 
             return
 
         print(
-            f"Pending Words Count : {pending_words.count()}"
+            f"Pending Words : {total_count}",
+            flush=True
         )
 
         successful = []
@@ -121,7 +133,8 @@ class Command(BaseCommand):
                 audio_file.name = file_name
 
                 print(
-                    f"Uploading : {path}/{file_name}"
+                    f"Uploading -> {path}/{file_name}",
+                    flush=True
                 )
 
                 return save_to_s3(
@@ -132,10 +145,14 @@ class Command(BaseCommand):
             except Exception as e:
 
                 print(
-                    f"TTS Failed : {text}"
+                    f"TTS Failed : {text}",
+                    flush=True
                 )
 
-                print(str(e))
+                print(
+                    str(e),
+                    flush=True
+                )
 
                 return None
 
@@ -145,11 +162,13 @@ class Command(BaseCommand):
         ):
 
             print(
-                "=" * 80
+                "=" * 80,
+                flush=True
             )
 
             print(
-                f"Processing {index} / {pending_words.count()} : {word.word}"
+                f"Processing {index}/{total_count} : {word.word}",
+                flush=True
             )
 
             try:
@@ -161,13 +180,15 @@ class Command(BaseCommand):
                 )
 
                 print(
-                    f"Audio Object Created : {created}"
+                    f"Audio Object Created : {created}",
+                    flush=True
                 )
 
                 if not audio_obj.pronunciation_audio_url:
 
                     print(
-                        "Generating Pronunciation..."
+                        "Generating Pronunciation...",
+                        flush=True
                     )
 
                     audio_obj.pronunciation_audio_url = (
@@ -177,16 +198,11 @@ class Command(BaseCommand):
                         )
                     )
 
-                else:
-
-                    print(
-                        "Pronunciation Already Exists"
-                    )
-
                 if not audio_obj.meaning_audio_url:
 
                     print(
-                        "Generating Meaning..."
+                        "Generating Meaning...",
+                        flush=True
                     )
 
                     audio_obj.meaning_audio_url = (
@@ -196,16 +212,11 @@ class Command(BaseCommand):
                         )
                     )
 
-                else:
-
-                    print(
-                        "Meaning Already Exists"
-                    )
-
                 if not audio_obj.usage_audio_url:
 
                     print(
-                        "Generating Usage..."
+                        "Generating Usage...",
+                        flush=True
                     )
 
                     audio_obj.usage_audio_url = (
@@ -215,16 +226,11 @@ class Command(BaseCommand):
                         )
                     )
 
-                else:
-
-                    print(
-                        "Usage Already Exists"
-                    )
-
                 if not audio_obj.origin_audio_url:
 
                     print(
-                        "Generating Origin..."
+                        "Generating Origin...",
+                        flush=True
                     )
 
                     audio_obj.origin_audio_url = (
@@ -234,16 +240,11 @@ class Command(BaseCommand):
                         )
                     )
 
-                else:
-
-                    print(
-                        "Origin Already Exists"
-                    )
-
                 if not audio_obj.part_of_speech_audio_url:
 
                     print(
-                        "Generating Part Of Speech..."
+                        "Generating Part Of Speech...",
+                        flush=True
                     )
 
                     audio_obj.part_of_speech_audio_url = (
@@ -253,17 +254,7 @@ class Command(BaseCommand):
                         )
                     )
 
-                else:
-
-                    print(
-                        "Part Of Speech Already Exists"
-                    )
-
                 audio_obj.save()
-
-                print(
-                    "Audio Object Saved"
-                )
 
                 if (
                     audio_obj.pronunciation_audio_url
@@ -273,9 +264,7 @@ class Command(BaseCommand):
                     and audio_obj.part_of_speech_audio_url
                 ):
 
-                    word.voice_status = (
-                        "GENERATED"
-                    )
+                    word.voice_status = "GENERATED"
 
                     word.save(
                         update_fields=[
@@ -283,60 +272,55 @@ class Command(BaseCommand):
                         ]
                     )
 
-                    print(
-                        f"{word.word} -> Voice Status Updated to GENERATED"
-                    )
-
                     successful.append(
                         str(word.id)
                     )
 
-                else:
-
                     print(
-                        f"{word.word} -> Some audio files are missing"
+                        f"{word.word} -> Voice Status Updated to GENERATED",
+                        flush=True
                     )
 
+                else:
+
                     unsuccessful.append(
-                        {
-                            "word": word.word,
-                            "reason": "Some audio files are missing"
-                        }
+                        str(word.id)
+                    )
+
+                    print(
+                        f"{word.word} -> Some audio files are missing",
+                        flush=True
                     )
 
             except Exception as e:
 
-                print(
-                    f"Error Processing {word.word}"
-                )
-
-                print(
-                    str(e)
-                )
-
                 unsuccessful.append(
-                    {
-                        "word": word.word,
-                        "reason": str(e)
-                    }
+                    str(word.id)
+                )
+
+                print(
+                    f"Error Processing {word.word}",
+                    flush=True
+                )
+
+                print(
+                    str(e),
+                    flush=True
                 )
 
         print(
-            "=" * 80
+            "=" * 80,
+            flush=True
         )
 
         print(
-            f"Success Count : {len(successful)}"
+            f"Success : {len(successful)}",
+            flush=True
         )
 
         print(
-            f"Failed Count : {len(unsuccessful)}"
-        )
-
-        logger.info(
-            "Word audio generation completed",
-            success_count=len(successful),
-            failed_count=len(unsuccessful)
+            f"Failed : {len(unsuccessful)}",
+            flush=True
         )
 
         self.stdout.write(
