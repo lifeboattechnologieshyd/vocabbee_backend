@@ -45,10 +45,8 @@ class Command(BaseCommand):
         pending_words = (
             Words.objects
             .filter(
-                is_active=True
-            )
-            .exclude(
-                audio__pronunciation_audio_url__isnull=False
+                is_active=True,
+                voice_status="PENDING"
             )[:1000]
         )
 
