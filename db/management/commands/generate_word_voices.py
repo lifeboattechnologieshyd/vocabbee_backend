@@ -47,7 +47,7 @@ class Command(BaseCommand):
             .filter(
                 is_active=True,
                 voice_status="PENDING"
-            )[:10]
+            )[:1000]
         )
 
         if not pending_words.exists():
