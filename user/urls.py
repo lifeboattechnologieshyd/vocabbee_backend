@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .dailychallenges import DailyChallengesAPIView, DailyChallengeWordsAPIView, DailyChallengeSubmitAPIView, \
-    DailyChallengeResultAPIView, DailyChallengeStatsAPIView
+    DailyChallengeResultAPIView, DailyChallengeStatsAPIView, DailyChallengeHistoryAPIView
 from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion, EndPractice, PracticeStats, \
     PracticeHistoryAPIView, HomeStats
 from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView
@@ -30,6 +30,7 @@ urlpatterns = [
     path("daily-challenges/results", DailyChallengeResultAPIView.as_view()),
     path("daily-challenges/stats", DailyChallengeStatsAPIView.as_view()),
 
+    path("daily-challenges/history", DailyChallengeHistoryAPIView.as_view()),
 
 
     path("home/stats", HomeStats.as_view()),
