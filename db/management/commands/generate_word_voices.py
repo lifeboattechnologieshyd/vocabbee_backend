@@ -11,6 +11,7 @@ from google.cloud import texttospeech
 
 from db.models import Words
 from db.models.user import WordAudios
+from shared.clients.s3 import save_to_s3
 
 logger = structlog.get_logger("default")
 
@@ -68,7 +69,7 @@ class Command(BaseCommand):
         successful = []
         unsuccessful = []
 
-        def generate_tts(text):
+        def generate_tts(text, path):
 
             if not text:
                 return None
@@ -116,18 +117,18 @@ class Command(BaseCommand):
                     f"{safe_text}_{int(time.time())}.wav"
                 )
 
-                file_path = (
-                    default_storage.save(
-                        f"pronunciations/{file_name}",
-                        ContentFile(
-                            response.audio_content
-                        )
-                    )
+                audio_file = ContentFile(
+                    response.audio_content
                 )
 
-                return default_storage.url(
-                    file_path
+                audio_file.name = file_name
+
+                return save_to_s3(
+                    path=path,
+                    file_obj=audio_file
                 )
+
+
 
             except Exception as e:
 
@@ -153,24 +154,29 @@ class Command(BaseCommand):
                     word=word.word
                 )
 
-                pronunciation_audio = (
-                    generate_tts(word.word)
+                pronunciation_audio = generate_tts(
+                    word.word,
+                    "words/pronunciation"
                 )
 
-                meaning_audio = (
-                    generate_tts(word.meaning)
+                meaning_audio = generate_tts(
+                    word.meaning,
+                    "words/meaning"
                 )
 
-                usage_audio = (
-                    generate_tts(word.usage)
+                usage_audio = generate_tts(
+                    word.usage,
+                    "words/usage"
                 )
 
-                origin_audio = (
-                    generate_tts(word.origin)
+                origin_audio = generate_tts(
+                    word.origin,
+                    "words/origin"
                 )
 
-                part_of_speech_audio = (
-                    generate_tts(word.part_of_speech)
+                part_of_speech_audio = generate_tts(
+                    word.part_of_speech,
+                    "words/part_of_speech"
                 )
 
                 if not pronunciation_audio:
