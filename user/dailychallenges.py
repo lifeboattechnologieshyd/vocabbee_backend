@@ -1,9 +1,9 @@
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
 from db.models import DailyChallengeWords
@@ -421,3 +421,26 @@ class DailyChallengeStatsAPIView(APIView):
             },
             description="Stats fetched successfully"
         )
+
+class DailyChallengeHistoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        kid_id = request.query_params.get("kid_id")
+        attempts = (
+            DailyChallengeAttempts.objects
+            .filter(
+                kid_id=kid_id,
+            )
+            .order_by("-challenge_date")
+        )
+        data = [
+            {
+                "attempt_id": str(attempt.id),
+                "attempted_date": attempt.challenge_date,
+                "words_attempted": attempt.attempted_words,
+                "correct_words": attempt.correct_words,
+                "status": attempt.status,
+            }
+            for attempt in attempts
+        ]
+        return CustomResponse().successResponse(data=data)
