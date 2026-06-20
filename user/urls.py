@@ -4,6 +4,8 @@ from .dailychallenges import DailyChallengesAPIView, DailyChallengeWordsAPIView,
     DailyChallengeResultAPIView, DailyChallengeStatsAPIView, DailyChallengeHistoryAPIView
 from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion, EndPractice, PracticeStats, \
     PracticeHistoryAPIView, HomeStats
+from .support import CreateSupportTicketAPIView, SupportTicketDetailAPIView, SendSupportMessageAPIView, \
+    SubmitSupportTicketRatingAPIView
 from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView
 
 urlpatterns = [
@@ -29,10 +31,20 @@ urlpatterns = [
     path("daily-challenges/submit", DailyChallengeSubmitAPIView.as_view()),
     path("daily-challenges/results", DailyChallengeResultAPIView.as_view()),
     path("daily-challenges/stats", DailyChallengeStatsAPIView.as_view()),
-
     path("daily-challenges/history", DailyChallengeHistoryAPIView.as_view()),
 
 
     path("home/stats", HomeStats.as_view()),
     path("file/upload",FileUploadView.as_view()),
+
+
+    #############################################
+    ## Support Urls
+    #############################################
+
+    path("support/tickets",CreateSupportTicketAPIView.as_view()),
+    path("support/tickets/<uuid:ticket_id>/",SupportTicketDetailAPIView.as_view()),
+    path("support/tickets/message", SendSupportMessageAPIView.as_view()),
+    path("support/tickets/rate",SubmitSupportTicketRatingAPIView.as_view()),
+
 ]

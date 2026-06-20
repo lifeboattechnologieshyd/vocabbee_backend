@@ -674,3 +674,4 @@ class PracticeAttemptAnswers(AuditModel):
 
     class Meta:
         db_table = "practice_attempt_answers"
+
