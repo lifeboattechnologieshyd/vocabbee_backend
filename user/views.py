@@ -502,5 +502,3 @@ class FileUploadView(APIView):
 
 
 
-
-
