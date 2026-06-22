@@ -4,6 +4,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from config.firebase import send_visible_push_notification
 from db.models import SupportTickets, SupportTicketMessages, SupportTicketMessageAttachments
 from shared.utils import CustomResponse
 
@@ -121,7 +122,15 @@ class AdminReplySupportTicketAPIView(APIView):
         if ticket.status == "IN_PROGRESS":
             ticket.status = "WAITING_FOR_USER"
         ticket.save()
-
+        send_visible_push_notification(
+            user=ticket.user,
+            title="Support Team Replied",
+            body="We have replied to your support ticket.",
+            notification_type="SUPPORT_REPLY",
+            payload={
+                "ticket_id": str(ticket.id)
+            }
+        )
         return CustomResponse().successResponse(data={
             "message": "Reply sent successfully"
         }, description="")
