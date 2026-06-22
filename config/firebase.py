@@ -110,15 +110,20 @@ def send_visible_push_notification(user,
                                    payload=None,
                                    priority="high"):
     init_firebase()
+    print("Firebase Initialized")
     payload = payload or {}
     final_payload = {
         "type": notification_type,
         **payload
     }
+    print(final_payload)
     devices = Devices.objects.filter(
         user=user,is_active=True,fcm_token__isnull=False
     ).exclude(fcm_token="")
     sent_count = 0
+    print("devices count with user and fcm not null is ====")
+    print(devices)
+
     for device in devices:
         try:
             message = messaging.Message(
@@ -155,6 +160,9 @@ def send_visible_push_notification(user,
             )
             messaging.send(message)
             sent_count += 1
+            print("push sent")
+            print(sent_count)
+            print(device.fcm_token)
         except Exception as error:
             print(error)
             pass
