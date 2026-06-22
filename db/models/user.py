@@ -675,3 +675,40 @@ class PracticeAttemptAnswers(AuditModel):
     class Meta:
         db_table = "practice_attempt_answers"
 
+
+
+class Devices(AuditModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        UserMaster,
+        on_delete=models.CASCADE,
+        related_name="sessions",
+        null=True,
+        blank=True
+    )
+    device_id = models.CharField(
+        max_length=200,
+    )
+    platform = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+    app_version = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+    fcm_token = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True
+    )
+    is_active = models.BooleanField(default=True)
+    last_login = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+    class Meta:
+        db_table = "devices"
+

@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from db.models import Devices
 from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
     PracticeAttemptAnswers, Referrals, CoinTransactions
 from shared.clients.s3 import add_unique_suffix_to_filename, sanitize_filename
@@ -111,6 +112,23 @@ class VerifyOTP(APIView):
         can_apply_referral = not Referrals.objects.filter(
             referred_user=user
         ).exists()
+        if "device_id" in request.data:
+            print("Creating device session...")
+            session = Devices.objects.create(
+                user=user,
+                device_id=request.data.get("device_id", ""),
+                platform=request.data.get("platform", ""),
+                app_version=request.data.get("app_version", ""),
+                fcm_token=request.data.get("fcm_token", ""),
+                last_login=timezone.now(),
+                is_active=True
+            )
+            print("================================")
+            print("DEVICE SESSION CREATED")
+            print("================================")
+            print(f"Session ID: {session.id}")
+            print("================================")
+
         return CustomResponse().successResponse(
             data={
                 "user_id": str(user.id),
@@ -128,7 +146,6 @@ class VerifyOTP(APIView):
             },
             description="Login successful"
         )
-
 
 class Profile(APIView):
     permission_classes = [IsAuthenticated]
