@@ -1,3 +1,4 @@
+import base64
 import json
 
 from firebase_admin import messaging
@@ -9,14 +10,16 @@ from db.models import Devices
 
 
 def init_firebase():
+    if firebase_admin._apps:
+        return
 
-    if not firebase_admin._apps:
-
-        cred = credentials.Certificate(
-            str(settings.FIREBASE_JSON_PATH)
-        )
-
-        firebase_admin.initialize_app(cred)
+    firebase_config = json.loads(
+        base64.b64decode(settings.FIREBASE_CREDENTIALS).decode("utf-8")
+    )
+    cred = credentials.Certificate(
+        firebase_config
+    )
+    firebase_admin.initialize_app(cred)
 
 
 def send_push_notification(
