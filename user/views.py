@@ -29,7 +29,7 @@ class SendOtp(APIView):
         if not mobile:
             return CustomResponse().errorResponse(
                 data={},
-                description="Mobile number is required"
+                description="Mobile  is required"
             )
         last_otp = OTPs.objects.filter(
             mobile_number=mobile,
@@ -512,6 +512,7 @@ class FileUploadView(APIView):
             return CustomResponse().errorResponse(
                 {"error": str(e)}, description="File upload failed", status=status.HTTP_400_BAD_REQUEST
             )
+
 
 
 
