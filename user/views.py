@@ -28,7 +28,7 @@ class SendOtp(APIView):
         if not mobile:
             return CustomResponse().errorResponse(
                 data={},
-                description="Mobile number is required"
+                description="Mobile  is required"
             )
         last_otp = OTPs.objects.filter(
             mobile_number=mobile,
