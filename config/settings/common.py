@@ -288,5 +288,10 @@ CRONJOBS = [
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+print("BASE DIR 2: ", BASE_DIR)
 
+FIREBASE_JSON_PATH = BASE_DIR / "config/vocabbee-firebase.json"
 
+print("FIREBASE DIR : ", FIREBASE_JSON_PATH)
+
+FIREBASE_CREDENTIALS = os.environ.get("FIREBASE_CREDENTIALS")
