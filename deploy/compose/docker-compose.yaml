@@ -57,7 +57,7 @@ services:
 
     volumes:
 
-      - ../../credentials:/project/credentials:ro
+      - /home/ubuntu/google-credentials:/project/credentials:ro
 
     networks:
       - vocabbee-network
