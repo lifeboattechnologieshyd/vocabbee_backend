@@ -2,7 +2,7 @@ from django.urls import path
 
 from .support import AdminSupportTicketsAPIView, AdminSupportTicketDetailAPIView, AdminReplySupportTicketAPIView, \
     AdminUpdateSupportTicketStatusAPIView
-from .views import SendOtp, VerifyOTP, GradesList, WordsCrud, UploadWords, MakeAdmin, WordsAudio
+from .views import SendOtp, VerifyOTP, GradesList, WordsCrud, UploadWords, MakeAdmin, WordsAudio, DashboardAPIView
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
@@ -25,5 +25,8 @@ urlpatterns = [
     path("support/ticket-details", AdminSupportTicketDetailAPIView.as_view()),
     path("support/reply", AdminReplySupportTicketAPIView.as_view()),
     path("support/ticket/update", AdminUpdateSupportTicketStatusAPIView.as_view()),
+
+
+    path("dashboard", DashboardAPIView.as_view()),
 
 ]

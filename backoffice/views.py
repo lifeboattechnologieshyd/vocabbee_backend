@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios
+from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios, PracticeAttempts
 from shared.clients.s3 import save_to_s3
 from shared.clients.sms import send_otp_sms
 from shared.helper import import_word_from_schoolfirst
@@ -334,6 +334,7 @@ class WordsCrud(APIView):
         word = request.data.get("word")
         subject = request.data.get("subject")
         concept = request.data.get("concept")
+        usage = request.data.get("usage")
         hint = request.data.get("hint")
         if not grade_id:
             return CustomResponse().errorResponse(
@@ -380,9 +381,7 @@ class WordsCrud(APIView):
             origin=request.data.get(
                 "origin"
             ),
-            usage=request.data.get(
-                "usage"
-            )
+            usage=usage
         )
         resp = getWordAudio(word_obj)
         return CustomResponse().successResponse(
@@ -672,16 +671,11 @@ class UploadWords(APIView):
                     Words(
                         grade=grade,
                         word=word,
-                        difficulty=row.get(
-                            "Difficulty",
-                            1
-                        ),
+                        difficulty=row.get("Difficulty",1),
                         subject=row.get('Subject','English'),
                         concept=row.get('Concept',None),
                         hint=row.get('Hint',None),
-                        meaning=row.get(
-                            "Meaning"
-                        ),
+                        meaning=row.get("Meaning"),
                         part_of_speech=row.get(
                             "Part Of Speech"
                         ),
@@ -716,3 +710,33 @@ class UploadWords(APIView):
             )
 
 
+
+
+
+class DashboardAPIView(APIView):
+
+    def get(self, request):
+
+        today = timezone.localdate()
+
+        total_users = UserMaster.objects.count()
+        total_words = Words.objects.count()
+        audio_generated = WordAudios.objects.count()
+        audio_pending = max(
+            total_words - audio_generated,
+            0
+        )
+        total_word_attempts = PracticeAttempts.objects.count()
+        daily_active_users = PracticeAttempts.objects.filter(
+            created_at__date=today
+        ).values(
+            "kid"
+        ).distinct().count()
+        return CustomResponse().successResponse(data={
+                "total_users": total_users,
+                "total_words": total_words,
+                "audio_generated": audio_generated,
+                "audio_pending": audio_pending,
+                "total_word_attempts": total_word_attempts,
+                "daily_active_users": daily_active_users
+        })
