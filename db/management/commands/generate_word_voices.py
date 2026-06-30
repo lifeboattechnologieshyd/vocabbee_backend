@@ -54,7 +54,7 @@ class Command(BaseCommand):
             Words.objects.filter(
                 is_active=True,
                 voice_status="PENDING"
-            )[:1000]
+            )[:10000]
         )
 
         total_count = pending_words.count()

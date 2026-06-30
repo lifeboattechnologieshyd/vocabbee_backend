@@ -517,5 +517,3 @@ class FileUploadView(APIView):
 
 
 
-
-
