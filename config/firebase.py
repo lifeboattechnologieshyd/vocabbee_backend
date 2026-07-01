@@ -173,3 +173,7 @@ def send_visible_push_notification(user,
                 "success": False,
                 "provider_response": f"{error}"
             }
+    return {
+        "success": False,
+        "provider_response": "No Devices found for this user"
+    }
