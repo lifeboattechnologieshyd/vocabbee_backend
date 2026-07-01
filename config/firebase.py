@@ -162,6 +162,7 @@ def send_visible_push_notification(user,
                 )
             )
             response = messaging.send(message)
+            print("push is sent")
             results.append({
                 "device": device.id,
                 "success": True,
