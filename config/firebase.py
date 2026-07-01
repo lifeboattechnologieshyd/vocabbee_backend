@@ -5,7 +5,7 @@ from firebase_admin import messaging
 import firebase_admin
 from firebase_admin import credentials
 from django.conf import settings
-
+from firebase_admin import exceptions
 from db.models import Devices
 
 
@@ -126,7 +126,7 @@ def send_visible_push_notification(user,
     sent_count = 0
     print("devices count with user and fcm not null is ====")
     print(devices)
-
+    results = []
     for device in devices:
         try:
             message = messaging.Message(
@@ -161,19 +161,37 @@ def send_visible_push_notification(user,
                     )
                 )
             )
-            messaging.send(message)
-            sent_count += 1
-            return {
+            response = messaging.send(message)
+            results.append({
+                "device": device.id,
                 "success": True,
-                "provider_response": "successfully sent"
-            }
+                "provider_response": response
+            })
+            sent_count += 1
+        except exceptions.FirebaseError as error:
+            print(error.code)
+            print(error.cause)
+            if "Requested entity was not found" in str(error):
+                device.is_active = False
+                device.save(update_fields=["is_active"])
+            results.append({
+                "device": device.id,
+                "success": False,
+                "provider_response": str(error)
+            })
         except Exception as error:
             print(error)
-            return {
+            error_message = str(error)
+            if "Requested entity was not found" in error_message:
+                device.is_active = False
+                device.save(update_fields=["is_active"])
+            results.append({
+                "device": device.id,
                 "success": False,
-                "provider_response": f"{error}"
-            }
+                "provider_response": error_message
+            })
     return {
-        "success": False,
-        "provider_response": "No Devices found for this user"
+        "success": sent_count > 0,
+        "sent_count": sent_count,
+        "results": results
     }

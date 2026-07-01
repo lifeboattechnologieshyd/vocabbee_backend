@@ -123,7 +123,7 @@ class AdminReplySupportTicketAPIView(APIView):
             ticket.status = "WAITING_FOR_USER"
         ticket.save()
         print("we are sending push notification to user")
-        send_visible_push_notification(
+        resp = send_visible_push_notification(
             user=ticket.user,
             title="Support Team Replied",
             body="We have replied to your support ticket.",
@@ -132,6 +132,7 @@ class AdminReplySupportTicketAPIView(APIView):
                 "ticket_id": str(ticket.id)
             }
         )
+        print(resp)
         print("we sent push notification to user")
         return CustomResponse().successResponse(data={
             "message": "Reply sent successfully"
