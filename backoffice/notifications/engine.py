@@ -25,15 +25,17 @@ class NotificationEngine:
             )
             return False
         result = sender.send(recipient=recipient)
-        recipient.provider_response = result["provider_response"]
-        recipient.sent_at = timezone.now()
+        recipient.provider_response = result.get("provider_response", "No Response")
         recipient.status = (
             "SENT"
             if result["success"]
             else "FAILED"
         )
         if recipient.status == 'FAILED':
-            recipient.failure_reason = result["provider_response"]
+            recipient.failure_reason = result.get("provider_response", "No Reason")
+        else:
+            recipient.sent_at = timezone.now()
+
         recipient.save(
             update_fields=[
                 "status",
