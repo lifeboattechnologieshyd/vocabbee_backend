@@ -163,9 +163,13 @@ def send_visible_push_notification(user,
             )
             messaging.send(message)
             sent_count += 1
-            print("push sent")
-            print(sent_count)
-            print(device.fcm_token)
+            return {
+                "success": True,
+                "provider_response": "successfully sent"
+            }
         except Exception as error:
             print(error)
-            pass
+            return {
+                "success": False,
+                "provider_response": f"{error}"
+            }

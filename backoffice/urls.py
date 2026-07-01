@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .notifications.campaign_service import CreateNotificationCampaignAPIView
 from .support import AdminSupportTicketsAPIView, AdminSupportTicketDetailAPIView, AdminReplySupportTicketAPIView, \
     AdminUpdateSupportTicketStatusAPIView
 from .views import SendOtp, VerifyOTP, GradesList, WordsCrud, UploadWords, MakeAdmin, WordsAudio, DashboardAPIView
@@ -28,5 +29,9 @@ urlpatterns = [
 
 
     path("dashboard", DashboardAPIView.as_view()),
+
+
+    # create notification service
+    path("create-campaign", CreateNotificationCampaignAPIView.as_view()),
 
 ]

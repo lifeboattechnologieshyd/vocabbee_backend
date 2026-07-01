@@ -716,9 +716,7 @@ class UploadWords(APIView):
 class DashboardAPIView(APIView):
 
     def get(self, request):
-
         today = timezone.localdate()
-
         total_users = UserMaster.objects.count()
         total_words = Words.objects.count()
         audio_generated = WordAudios.objects.count()
