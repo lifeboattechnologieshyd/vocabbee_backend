@@ -107,7 +107,8 @@ class VerifyOTP(APIView):
                 user.is_mobile_verified = True
                 user.save()
         user.last_login_at = timezone.now()
-        user.save(update_fields=["last_login_at"])
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login_at", "last_login"])
         refresh = RefreshToken.for_user(user)
         can_apply_referral = not Referrals.objects.filter(
             referred_user=user
