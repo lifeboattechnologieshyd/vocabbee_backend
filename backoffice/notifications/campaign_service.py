@@ -45,7 +45,6 @@ class CampaignService:
 
 class CreateNotificationCampaignAPIView(APIView):
 
-
     def post(self, request):
         try:
             title = request.data.get("title")
@@ -67,17 +66,11 @@ class CreateNotificationCampaignAPIView(APIView):
                 user_ids=request.data.get("user_ids"),
                 kid_ids=request.data.get("kid_ids"),
                 scheduled_at=request.data.get("scheduled_at"),
-                created_by=request.user
+                created_by=None
             )
-
             return CustomResponse().successResponse(
                 description="Notification campaign created successfully.",
-                data={
-                    "campaign_id": campaign.id,
-                    "total_recipients": campaign.total_recipients,
-                    "success_count": campaign.success_count,
-                    "failed_count": campaign.failed_count
-                }
+                data={}
             )
 
         except Exception as error:

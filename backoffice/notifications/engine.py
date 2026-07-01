@@ -36,7 +36,7 @@ class NotificationEngine:
             )
             return True
         recipient.status = "FAILED"
-        recipient.failure_reason = result["message"]
+        recipient.failure_reason = result["provider_response"]
         recipient.save(
             update_fields=[
                 "status",

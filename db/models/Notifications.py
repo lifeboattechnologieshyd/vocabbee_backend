@@ -227,4 +227,4 @@ class NotificationRecipients(AuditModel):
         db_table = "notification_recipients"
 
     def __str__(self):
-        return f"{self.notification.title} - {self.user}"
+        return f"{self.notification} - {self.user}"
