@@ -32,7 +32,7 @@ class SendOtp(APIView):
                 description="Mobile  is required"
             )
         last_otp = OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             created_at__gte=timezone.now() - timedelta(seconds=30)
         ).exists()
 
