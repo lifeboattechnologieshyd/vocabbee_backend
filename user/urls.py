@@ -10,6 +10,7 @@ from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferra
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
+    path("v2/send-otp", SendOtp.as_view()),
     path("verify-otp", VerifyOTP.as_view()),
     path("profile", Profile.as_view()),
     path("grades", GradesList.as_view()),

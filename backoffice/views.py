@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios, PracticeAttempts
 from shared.clients.s3 import save_to_s3
-from shared.clients.sms import send_otp_sms
+from shared.clients.sms import send_sms_to_mobile
 from shared.helper import import_word_from_schoolfirst
 from shared.utils import CustomResponse
 
@@ -67,7 +67,7 @@ class SendOtp(APIView):
             expires_at=timezone.now() + timedelta(minutes=5),
             is_active=True
         )
-        send_otp_sms(mobile, otp)
+        send_sms_to_mobile(mobile, otp)
         print(f"OTP for {mobile} : {otp}")
         return CustomResponse().successResponse(
             data={},

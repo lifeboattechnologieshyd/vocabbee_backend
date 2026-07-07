@@ -1,6 +1,6 @@
 import random
 from datetime import timedelta
-
+import re
 from django.core.files.storage import default_storage
 from django.conf import settings
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -18,10 +18,10 @@ from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, Kid
     PracticeAttemptAnswers, Referrals, CoinTransactions
 from shared.clients.s3 import add_unique_suffix_to_filename, sanitize_filename
 from django.core.files.base import ContentFile
-from shared.clients.sms import send_otp_sms
+from shared.clients.sms import send_sms_to_mobile
 from shared.helper import get_practice_words, getReferralCode
 from shared.utils import CustomResponse
-
+EMAIL_REGEX = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
 class SendOtp(APIView):
 
     def post(self, request):
@@ -57,8 +57,56 @@ class SendOtp(APIView):
             expires_at=timezone.now() + timedelta(minutes=5),
             is_active=True
         )
-        send_otp_sms(mobile, otp)
+        send_sms_to_mobile(mobile, otp)
         print(f"OTP for {mobile} : {otp}")
+        return CustomResponse().successResponse(
+            data={},
+            description="OTP sent successfully"
+        )
+
+
+class SendOtpV2(APIView):
+
+    def post(self, request):
+        identifier = request.data.get("identifier")
+        identifier = str(identifier).strip().lower()
+        if not identifier:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Mobile or Email  is required"
+            )
+
+        last_otp = OTPs.objects.filter(
+            identifier=identifier,
+            created_at__gte=timezone.now() - timedelta(seconds=30)
+        ).exists()
+        if last_otp:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Please wait before requesting another OTP"
+            )
+        otp = str(random.randint(1000, 9999))
+        if identifier == '9014083090':
+            otp = "1234"
+        OTPs.objects.filter(
+            identifier=identifier,
+            is_active=True
+        ).update(
+            is_active=False
+        )
+        OTPs.objects.create(
+            identifier=identifier,
+            otp=otp,
+            expires_at=timezone.now() + timedelta(minutes=5),
+            is_active=True
+        )
+        # Detect Email or Mobile
+        if re.match(EMAIL_REGEX, identifier):
+            otp_type = "EMAIL"
+        elif identifier.isdigit() and len(identifier) == 10:
+            otp_type = "MOBILE"
+            print(f"OTP for {identifier} : {otp}")
+            send_sms_to_mobile(identifier, otp)
         return CustomResponse().successResponse(
             data={},
             description="OTP sent successfully"

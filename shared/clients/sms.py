@@ -30,3 +30,30 @@ def send_otp_sms(mobile, otp):
     except Exception as e:
         print("SMS Error:", str(e))
         return False
+
+
+def send_sms_to_mobile(var1, mobile, msg):
+    try:
+        msg = 11935
+        url = "https://sms.lifeboattechnologies.com/dev/bulkV2"
+        params = {
+            "authorization": "CfnZkoK6sueIEU9GwL3BbiXgD8xluNQ0HlRTPrbzpSmVJ152O7tyWbQfSXVBO94Nra0DhHx6YkosTEzu",
+            "route": "dlt",
+            "sender_id": "VOCABE",      # THESRU
+            "message": msg,  # 8764
+            "variables_values": var1,
+            "flash": "0",
+            "numbers": str(mobile)
+        }
+        response = requests.get(
+            url,
+            params=params,
+            timeout=10
+        )
+        if response.status_code == 200:
+            return True
+        return False
+
+    except Exception as e:
+        print("Error sending OTP SMS:", str(e))
+        return False

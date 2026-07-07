@@ -71,7 +71,10 @@ class UserMaster(AbstractBaseUser):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     mobile = models.BigIntegerField(
-        validators=[MinValueValidator(1000000000), MaxValueValidator(9999999999)], unique=True
+        validators=[MinValueValidator(1000000000), MaxValueValidator(9999999999)],
+        unique=True,
+        null=True,
+        blank=True
     )
     full_name = models.CharField(
         max_length=100,
@@ -84,9 +87,11 @@ class UserMaster(AbstractBaseUser):
         null=True
     )
     email = models.CharField(
-        max_length=50,
+        max_length=100,
+        unique=True,
         blank=True,
-        null=True
+        null=True,
+        db_index=True
     )
     dob = models.CharField(
         max_length=20,
@@ -145,7 +150,11 @@ class UserMaster(AbstractBaseUser):
 
     @property
     def display_name(self):
-        return self.full_name or str(self.mobile)
+        if self.full_name:
+            return self.full_name
+        if self.mobile:
+            return str(self.mobile)
+        return self.email
 
     @property
     def is_profile_completed(self):
@@ -156,7 +165,7 @@ class UserMaster(AbstractBaseUser):
         db_table = "user_master"
 
     def __str__(self):
-        return str(self.mobile)
+        return  str(self.mobile or self.email)
 
 class Referrals(AuditModel):
 
@@ -242,7 +251,7 @@ class CoinTransactions(AuditModel):
 
 class OTPs(AuditModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    mobile_number = models.CharField(max_length=15)
+    identifier = models.CharField(max_length=100)
     otp = models.CharField(max_length=6)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
