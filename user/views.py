@@ -129,7 +129,7 @@ class VerifyOTP(APIView):
                 description="OTP is required"
             )
         otp_record = OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             otp=otp,
             is_active=True,
             expires_at__gt=timezone.now()
