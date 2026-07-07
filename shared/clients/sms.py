@@ -40,7 +40,7 @@ def send_sms_to_mobile(var1, mobile, msg):
             "route": "dlt",
             "sender_id": "VOCABE",      # VOCABE
             "message": msg,
-            "variables_values": f"1234|",
+            "variables_values": f"{var1}|",
             "flash": "0",
             "numbers": str(mobile)
         }
