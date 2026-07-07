@@ -46,13 +46,13 @@ class SendOtp(APIView):
             otp = "1234"
         # otp = "1234"
         OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             is_active=True
         ).update(
             is_active=False
         )
         OTPs.objects.create(
-            mobile_number=mobile,
+            identifier=mobile,
             otp=otp,
             expires_at=timezone.now() + timedelta(minutes=5),
             is_active=True
