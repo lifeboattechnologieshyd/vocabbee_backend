@@ -58,7 +58,7 @@ class SendOtp(APIView):
             is_active=True
         )
         print("sending otp")
-        send_sms_to_mobile(otp, mobile, 11935)
+        send_sms_to_mobile(otp, mobile, 12596)
         print(f"OTP for {mobile} : {otp}")
         return CustomResponse().successResponse(
             data={},
@@ -107,7 +107,7 @@ class SendOtpV2(APIView):
         elif identifier.isdigit() and len(identifier) == 10:
             otp_type = "MOBILE"
             print(f"OTP for {identifier} : {otp}")
-            send_sms_to_mobile(otp, identifier, 11935)
+            send_sms_to_mobile(otp, identifier, 12596)
         return CustomResponse().successResponse(
             data={},
             description="OTP sent successfully"

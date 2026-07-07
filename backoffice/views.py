@@ -67,7 +67,7 @@ class SendOtp(APIView):
             expires_at=timezone.now() + timedelta(minutes=5),
             is_active=True
         )
-        send_sms_to_mobile(otp, mobile, 11935)
+        send_sms_to_mobile(otp, mobile, 12596)
         print(f"OTP for {mobile} : {otp}")
         return CustomResponse().successResponse(
             data={},
