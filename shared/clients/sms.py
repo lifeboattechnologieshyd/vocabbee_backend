@@ -44,6 +44,7 @@ def send_sms_to_mobile(var1, mobile, msg):
             "flash": "0",
             "numbers": str(mobile)
         }
+        print(params)
         response = requests.get(
             url,
             params=params,
