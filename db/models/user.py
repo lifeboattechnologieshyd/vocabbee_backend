@@ -251,7 +251,7 @@ class CoinTransactions(AuditModel):
 
 class OTPs(AuditModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    identifier = models.CharField(max_length=100)
+    identifier = models.CharField(max_length=100, null=True)
     otp = models.CharField(max_length=6)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
