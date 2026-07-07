@@ -34,7 +34,6 @@ def send_otp_sms(mobile, otp):
 
 def send_sms_to_mobile(var1, mobile, msg):
     try:
-        msg = 11935
         url = "https://sms.lifeboattechnologies.com/dev/bulkV2"
         params = {
             "authorization": "CfnZkoK6sueIEU9GwL3BbiXgD8xluNQ0HlRTPrbzpSmVJ152O7tyWbQfSXVBO94Nra0DhHx6YkosTEzu",

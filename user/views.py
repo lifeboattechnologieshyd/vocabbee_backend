@@ -57,7 +57,7 @@ class SendOtp(APIView):
             expires_at=timezone.now() + timedelta(minutes=5),
             is_active=True
         )
-        send_sms_to_mobile(mobile, otp)
+        send_sms_to_mobile(mobile, otp, 11935)
         print(f"OTP for {mobile} : {otp}")
         return CustomResponse().successResponse(
             data={},
@@ -106,7 +106,7 @@ class SendOtpV2(APIView):
         elif identifier.isdigit() and len(identifier) == 10:
             otp_type = "MOBILE"
             print(f"OTP for {identifier} : {otp}")
-            send_sms_to_mobile(identifier, otp)
+            send_sms_to_mobile(identifier, otp,11935)
         return CustomResponse().successResponse(
             data={},
             description="OTP sent successfully"
