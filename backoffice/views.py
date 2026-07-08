@@ -56,7 +56,7 @@ class SendOtp(APIView):
         otp = str(random.randint(1000, 9999))
         otp = "1234"
         OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             is_active=True
         ).update(
             is_active=False
