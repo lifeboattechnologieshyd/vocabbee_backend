@@ -38,17 +38,19 @@ def send_sms_to_mobile(var1, mobile, msg):
         params = {
             "authorization": "CfnZkoK6sueIEU9GwL3BbiXgD8xluNQ0HlRTPrbzpSmVJ152O7tyWbQfSXVBO94Nra0DhHx6YkosTEzu",
             "route": "dlt",
-            "sender_id": "VOCABE",      # THESRU
-            "message": msg,  # 8764
-            "variables_values": var1,
+            "sender_id": "VOCABE",      # VOCABE
+            "message": msg,
+            "variables_values": f"{var1}|",
             "flash": "0",
             "numbers": str(mobile)
         }
+        print(params)
         response = requests.get(
             url,
             params=params,
             timeout=10
         )
+        print(response)
         if response.status_code == 200:
             return True
         return False

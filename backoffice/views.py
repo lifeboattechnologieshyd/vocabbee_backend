@@ -44,7 +44,7 @@ class SendOtp(APIView):
                 description="You Don't have access to login"
             )
         last_otp = OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             created_at__gte=timezone.now() - timedelta(seconds=30)
         ).exists()
 
@@ -56,18 +56,18 @@ class SendOtp(APIView):
         otp = str(random.randint(1000, 9999))
         otp = "1234"
         OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             is_active=True
         ).update(
             is_active=False
         )
         OTPs.objects.create(
-            mobile_number=mobile,
+            identifier=mobile,
             otp=otp,
             expires_at=timezone.now() + timedelta(minutes=5),
             is_active=True
         )
-        send_sms_to_mobile(mobile, otp, 11935)
+        send_sms_to_mobile(otp, mobile, 12596)
         print(f"OTP for {mobile} : {otp}")
         return CustomResponse().successResponse(
             data={},
@@ -105,7 +105,7 @@ class VerifyOTP(APIView):
                 description="OTP is required"
             )
         otp_record = OTPs.objects.filter(
-            mobile_number=mobile,
+            identifier=mobile,
             otp=otp,
             is_active=True,
             expires_at__gt=timezone.now()
