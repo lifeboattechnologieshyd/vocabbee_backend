@@ -426,8 +426,8 @@ class WordsCrud(APIView):
         if search:
             words = words.filter(
                 Q(word__icontains=search)
-                |
-                Q(meaning__icontains=search)
+                # |
+                # Q(meaning__icontains=search)
             )
         total_count = words.count()
         start = (page - 1) * page_size
