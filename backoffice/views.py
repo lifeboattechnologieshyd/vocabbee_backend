@@ -580,22 +580,150 @@ class WordsCrud(APIView):
             description="Word deleted successfully"
         )
 
+# class UploadWords(APIView):
+#
+#     permission_classes = [AllowAny]
+#     parser_classes = [MultiPartParser, FormParser]
+#
+#     def post(self, request):
+#
+#         # if not request.user.is_admin:
+#         #     return CustomResponse().errorResponse(
+#         #         data={},
+#         #         description="Unauthorized"
+#         #     )
+#
+#         file = request.FILES.get("file")
+#
+#         if not file:
+#             return CustomResponse().errorResponse(
+#                 data={},
+#                 description="File is required"
+#             )
+#
+#         try:
+#
+#             df = pd.read_excel(file)
+#             required_columns = [
+#                 "Grade",
+#                 "Word",
+#                 "Difficulty"
+#             ]
+#             missing_columns = [
+#                 column
+#                 for column in required_columns
+#                 if column not in df.columns
+#             ]
+#
+#             if missing_columns:
+#
+#                 return CustomResponse().errorResponse(
+#                     data={},
+#                     description=f"Missing columns: {', '.join(missing_columns)}"
+#                 )
+#
+#             grades_map = {
+#                 grade.name.strip().lower(): grade
+#                 for grade in Grades.objects.filter(
+#                     is_active=True
+#                 )
+#             }
+#
+#             existing_words = set(
+#                 Words.objects.filter(
+#                     is_active=True
+#                 ).values_list(
+#                     "word",
+#                     flat=True
+#                 )
+#             )
+#
+#             words_to_create = []
+#
+#             skipped_count = 0
+#
+#             for _, row in df.iterrows():
+#
+#                 grade_name = str(
+#                     row["Grade"]
+#                 ).strip()
+#
+#                 word = str(
+#                     row["Word"]
+#                 ).strip()
+#
+#                 if not word:
+#                     continue
+#
+#                 grade = grades_map.get(
+#                     grade_name.lower()
+#                 )
+#
+#                 if not grade:
+#                     skipped_count += 1
+#                     continue
+#
+#                 if word in existing_words:
+#                     skipped_count += 1
+#                     continue
+#
+#                 words_to_create.append(
+#                     Words(
+#                         grade=grade,
+#                         word=word,
+#                         difficulty=row.get("Difficulty",1),
+#                         subject=row.get('Subject','English'),
+#                         concept=row.get('Concept',None),
+#                         hint=row.get('Hint',None),
+#                         meaning=row.get("Meaning"),
+#                         part_of_speech=row.get(
+#                             "Part Of Speech"
+#                         ),
+#                         origin=row.get(
+#                             "Origin"
+#                         ),
+#                         usage=row.get(
+#                             "Usage"
+#                         )
+#                     )
+#                 )
+#
+#                 existing_words.add(word)
+#
+#             Words.objects.bulk_create(
+#                 words_to_create,
+#                 batch_size=1000
+#             )
+#
+#             return CustomResponse().successResponse(
+#                 data={
+#                     "created_count": len(words_to_create),
+#                     "skipped_count": skipped_count
+#                 },
+#                 description="Words uploaded successfully"
+#             )
+#
+#         except Exception as e:
+#             return CustomResponse().errorResponse(
+#                 data={},
+#                 description=str(e)
+#             )
+
+
 class UploadWords(APIView):
 
     permission_classes = [AllowAny]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [
+        MultiPartParser,
+        FormParser
+    ]
 
     def post(self, request):
-
-        # if not request.user.is_admin:
-        #     return CustomResponse().errorResponse(
-        #         data={},
-        #         description="Unauthorized"
-        #     )
 
         file = request.FILES.get("file")
 
         if not file:
+
             return CustomResponse().errorResponse(
                 data={},
                 description="File is required"
@@ -604,11 +732,13 @@ class UploadWords(APIView):
         try:
 
             df = pd.read_excel(file)
+
             required_columns = [
                 "Grade",
                 "Word",
                 "Difficulty"
             ]
+
             missing_columns = [
                 column
                 for column in required_columns
@@ -619,7 +749,10 @@ class UploadWords(APIView):
 
                 return CustomResponse().errorResponse(
                     data={},
-                    description=f"Missing columns: {', '.join(missing_columns)}"
+                    description=(
+                        f"Missing columns: "
+                        f"{', '.join(missing_columns)}"
+                    )
                 )
 
             grades_map = {
@@ -629,30 +762,68 @@ class UploadWords(APIView):
                 )
             }
 
-            existing_words = set(
-                Words.objects.filter(
-                    is_active=True
-                ).values_list(
-                    "word",
-                    flat=True
+            existing_words = {
+                (
+                    str(word).strip().lower(),
+                    str(grade_id)
                 )
-            )
+                for word, grade_id in (
+                    Words.objects.filter(
+                        is_active=True
+                    ).values_list(
+                        "word",
+                        "grade_id"
+                    )
+                )
+                if word
+            }
 
             words_to_create = []
 
-            skipped_count = 0
+            created_count = 0
+            duplicate_count = 0
+            invalid_grade_count = 0
+            missing_word_count = 0
 
-            for _, row in df.iterrows():
+            duplicate_words = []
+            invalid_grades = []
+
+            for index, row in df.iterrows():
+
+                excel_row = index + 2
+
+                grade_value = row.get("Grade")
+                word_value = row.get("Word")
+
+                if pd.isna(grade_value):
+
+                    invalid_grade_count += 1
+
+                    invalid_grades.append({
+                        "row": excel_row,
+                        "grade": None
+                    })
+
+                    continue
+
+                if pd.isna(word_value):
+
+                    missing_word_count += 1
+
+                    continue
 
                 grade_name = str(
-                    row["Grade"]
+                    grade_value
                 ).strip()
 
                 word = str(
-                    row["Word"]
+                    word_value
                 ).strip()
 
                 if not word:
+
+                    missing_word_count += 1
+
                     continue
 
                 grade = grades_map.get(
@@ -660,57 +831,158 @@ class UploadWords(APIView):
                 )
 
                 if not grade:
-                    skipped_count += 1
+
+                    invalid_grade_count += 1
+
+                    invalid_grades.append({
+                        "row": excel_row,
+                        "grade": grade_name
+                    })
+
                     continue
 
-                if word in existing_words:
-                    skipped_count += 1
+                normalized_word = (
+                    word.lower()
+                )
+
+                duplicate_key = (
+                    normalized_word,
+                    str(grade.id)
+                )
+
+                if duplicate_key in existing_words:
+
+                    duplicate_count += 1
+
+                    duplicate_words.append({
+                        "row": excel_row,
+                        "word": word,
+                        "grade": grade.name
+                    })
+
+                    print(
+                        f"Duplicate skipped -> "
+                        f"Word: {word}, "
+                        f"Grade: {grade.name}",
+                        flush=True
+                    )
+
                     continue
+
+                difficulty = row.get(
+                    "Difficulty",
+                    1
+                )
+
+                if pd.isna(difficulty):
+                    difficulty = 1
+
+                subject = row.get(
+                    "Subject",
+                    "English"
+                )
+
+                if pd.isna(subject):
+                    subject = "English"
+
+                concept = row.get(
+                    "Concept"
+                )
+
+                if pd.isna(concept):
+                    concept = None
+
+                hint = row.get(
+                    "Hint"
+                )
+
+                if pd.isna(hint):
+                    hint = None
+
+                meaning = row.get(
+                    "Meaning"
+                )
+
+                if pd.isna(meaning):
+                    meaning = None
+
+                part_of_speech = row.get(
+                    "Part Of Speech"
+                )
+
+                if pd.isna(part_of_speech):
+                    part_of_speech = None
+
+                origin = row.get(
+                    "Origin"
+                )
+
+                if pd.isna(origin):
+                    origin = None
+
+                usage = row.get(
+                    "Usage"
+                )
+
+                if pd.isna(usage):
+                    usage = None
 
                 words_to_create.append(
                     Words(
                         grade=grade,
                         word=word,
-                        difficulty=row.get("Difficulty",1),
-                        subject=row.get('Subject','English'),
-                        concept=row.get('Concept',None),
-                        hint=row.get('Hint',None),
-                        meaning=row.get("Meaning"),
-                        part_of_speech=row.get(
-                            "Part Of Speech"
-                        ),
-                        origin=row.get(
-                            "Origin"
-                        ),
-                        usage=row.get(
-                            "Usage"
-                        )
+                        difficulty=difficulty,
+                        subject=subject,
+                        concept=concept,
+                        hint=hint,
+                        meaning=meaning,
+                        part_of_speech=part_of_speech,
+                        origin=origin,
+                        usage=usage
                     )
                 )
 
-                existing_words.add(word)
+                existing_words.add(
+                    duplicate_key
+                )
 
-            Words.objects.bulk_create(
-                words_to_create,
-                batch_size=1000
-            )
+                created_count += 1
+
+            if words_to_create:
+
+                Words.objects.bulk_create(
+                    words_to_create,
+                    batch_size=1000
+                )
 
             return CustomResponse().successResponse(
                 data={
-                    "created_count": len(words_to_create),
-                    "skipped_count": skipped_count
+                    "created_count": created_count,
+                    "duplicate_count": duplicate_count,
+                    "invalid_grade_count": (
+                        invalid_grade_count
+                    ),
+                    "missing_word_count": (
+                        missing_word_count
+                    ),
+                    "duplicate_words": (
+                        duplicate_words
+                    ),
+                    "invalid_grades": (
+                        invalid_grades
+                    )
                 },
-                description="Words uploaded successfully"
+                description=(
+                    "Words uploaded successfully"
+                )
             )
 
         except Exception as e:
+
             return CustomResponse().errorResponse(
                 data={},
                 description=str(e)
             )
-
-
-
 
 
 class DashboardAPIView(APIView):
