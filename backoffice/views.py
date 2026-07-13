@@ -736,6 +736,7 @@ class UploadWords(APIView):
         try:
 
             df = pd.read_excel(file)
+            df.columns = df.columns.str.strip()
 
             required_columns = [
                 "Grade",
