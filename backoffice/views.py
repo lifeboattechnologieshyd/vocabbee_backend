@@ -8,6 +8,7 @@ import requests
 from boto3 import s3
 from boto3.s3.inject import download_file
 from django.conf import settings
+from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -710,9 +711,13 @@ class WordsCrud(APIView):
 #             )
 
 
+
+
+
 class UploadWords(APIView):
 
     permission_classes = [AllowAny]
+
     parser_classes = [
         MultiPartParser,
         FormParser
@@ -723,10 +728,9 @@ class UploadWords(APIView):
         file = request.FILES.get("file")
 
         if not file:
-
             return CustomResponse().errorResponse(
                 data={},
-                description="File is required"
+                description="File is required."
             )
 
         try:
@@ -750,7 +754,7 @@ class UploadWords(APIView):
                 return CustomResponse().errorResponse(
                     data={},
                     description=(
-                        f"Missing columns: "
+                        f"Missing required columns: "
                         f"{', '.join(missing_columns)}"
                     )
                 )
@@ -764,19 +768,19 @@ class UploadWords(APIView):
 
             existing_words = {
                 (
-                    str(word).strip().lower(),
+                    word.strip().lower(),
                     str(grade_id)
                 )
-                for word, grade_id in (
-                    Words.objects.filter(
-                        is_active=True
-                    ).values_list(
-                        "word",
-                        "grade_id"
-                    )
+                for word, grade_id in Words.objects.filter(
+                    is_active=True
+                ).values_list(
+                    "word",
+                    "grade_id"
                 )
                 if word
             }
+
+            seen_in_file = set()
 
             words_to_create = []
 
@@ -787,6 +791,7 @@ class UploadWords(APIView):
 
             duplicate_words = []
             invalid_grades = []
+            missing_words = []
 
             for index, row in df.iterrows():
 
@@ -810,6 +815,10 @@ class UploadWords(APIView):
 
                     missing_word_count += 1
 
+                    missing_words.append({
+                        "row": excel_row
+                    })
+
                     continue
 
                 grade_name = str(
@@ -818,11 +827,15 @@ class UploadWords(APIView):
 
                 word = str(
                     word_value
-                ).strip()
+                ).strip().lower()
 
                 if not word:
 
                     missing_word_count += 1
+
+                    missing_words.append({
+                        "row": excel_row
+                    })
 
                     continue
 
@@ -841,15 +854,30 @@ class UploadWords(APIView):
 
                     continue
 
-                normalized_word = (
-                    word.lower()
-                )
-
                 duplicate_key = (
-                    normalized_word,
+                    word,
                     str(grade.id)
                 )
 
+                # Duplicate in uploaded Excel
+                if duplicate_key in seen_in_file:
+
+                    duplicate_count += 1
+
+                    duplicate_words.append({
+                        "row": excel_row,
+                        "word": word,
+                        "grade": grade.name,
+                        "reason": "Duplicate in uploaded file"
+                    })
+
+                    continue
+
+                seen_in_file.add(
+                    duplicate_key
+                )
+
+                # Duplicate already exists in DB
                 if duplicate_key in existing_words:
 
                     duplicate_count += 1
@@ -857,17 +885,15 @@ class UploadWords(APIView):
                     duplicate_words.append({
                         "row": excel_row,
                         "word": word,
-                        "grade": grade.name
+                        "grade": grade.name,
+                        "reason": "Already exists"
                     })
 
-                    print(
-                        f"Duplicate skipped -> "
-                        f"Word: {word}, "
-                        f"Grade: {grade.name}",
-                        flush=True
-                    )
-
                     continue
+
+                existing_words.add(
+                    duplicate_key
+                )
 
                 difficulty = row.get(
                     "Difficulty",
@@ -942,38 +968,39 @@ class UploadWords(APIView):
                     )
                 )
 
-                existing_words.add(
-                    duplicate_key
-                )
-
                 created_count += 1
+            with transaction.atomic():
 
-            if words_to_create:
+                if words_to_create:
 
-                Words.objects.bulk_create(
-                    words_to_create,
-                    batch_size=1000
-                )
+                    Words.objects.bulk_create(
+                        words_to_create,
+                        batch_size=1000
+                    )
 
             return CustomResponse().successResponse(
                 data={
-                    "created_count": created_count,
-                    "duplicate_count": duplicate_count,
-                    "invalid_grade_count": (
-                        invalid_grade_count
-                    ),
-                    "missing_word_count": (
-                        missing_word_count
-                    ),
-                    "duplicate_words": (
-                        duplicate_words
-                    ),
-                    "invalid_grades": (
-                        invalid_grades
-                    )
+                    "summary": {
+                        "total_rows": len(df),
+                        "created_count": created_count,
+                        "duplicate_count": duplicate_count,
+                        "invalid_grade_count": invalid_grade_count,
+                        "missing_word_count": missing_word_count
+                    },
+                    "duplicate_words": duplicate_words,
+                    "invalid_grades": invalid_grades,
+                    "missing_words": missing_words
                 },
+                description="Words uploaded successfully."
+            )
+
+        except IntegrityError:
+
+            return CustomResponse().errorResponse(
+                data={},
                 description=(
-                    "Words uploaded successfully"
+                    "Upload failed because duplicate words already exist. "
+                    "Please verify the Excel file and try again."
                 )
             )
 
@@ -983,7 +1010,6 @@ class UploadWords(APIView):
                 data={},
                 description=str(e)
             )
-
 
 class DashboardAPIView(APIView):
 
