@@ -277,6 +277,84 @@ class Grades(AuditModel):
     class Meta:
         db_table = "grades"
 
+
+class Subjects(AuditModel):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    name = models.CharField(
+        max_length=100,
+        unique=True
+    )
+
+    description = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    icon = models.URLField(
+        null=True,
+        blank=True
+    )
+
+    color_code = models.CharField(
+        max_length=10,
+        default="#4F46E5"
+    )
+
+    display_order = models.IntegerField(
+        default=0
+    )
+
+    is_active = models.BooleanField(
+        default=True
+    )
+
+    class Meta:
+        db_table = "subjects"
+        ordering = ["display_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+class Topics(AuditModel):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    subject = models.ForeignKey(
+        Subjects,
+        on_delete=models.CASCADE,
+        related_name="topics"
+    )
+
+    name = models.CharField(
+        max_length=100
+    )
+
+    description = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    display_order = models.IntegerField(
+        default=0
+    )
+
+    is_active = models.BooleanField(
+        default=True
+    )
+
+    class Meta:
+        db_table = "topics"
+        unique_together = ("subject", "name")
+
+
 class Kids(AuditModel):
 
     id = models.UUIDField(
@@ -337,6 +415,12 @@ class Words(AuditModel):
     )
     subject = models.CharField(
         max_length=255, default="English"
+    )
+    category = models.ForeignKey(
+        Subjects,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="words"
     )
     concept = models.CharField(max_length=255, null=True)
     hint = models.CharField(max_length=500, null=True)

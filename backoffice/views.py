@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios, PracticeAttempts
+from db.models.user import OTPs, UserMaster, Grades, Words, WordAudios, PracticeAttempts, Subjects
 from shared.clients.s3 import save_to_s3
 from shared.clients.sms import send_sms_to_mobile
 from shared.helper import import_word_from_schoolfirst
@@ -1010,3 +1010,65 @@ class DashboardAPIView(APIView):
                 "total_word_attempts": total_word_attempts,
                 "daily_active_users": daily_active_users
         })
+
+
+class SubjectCrud(APIView):
+
+    def post(self, request):
+        name = request.data.get("name", "").strip()
+        description = request.data.get("description")
+        icon = request.data.get("icon")
+        color_code = request.data.get("color_code", "#4F46E5")
+        display_order = request.data.get("display_order", 0)
+
+        if not name:
+            return CustomResponse().errorResponse(
+                description="Subject name is required."
+            )
+
+        if Subjects.objects.filter(
+            name__iexact=name,
+            is_deleted=False
+        ).exists():
+            return CustomResponse().errorResponse(
+                description="Subject already exists."
+            )
+
+        subject = Subjects.objects.create(
+            name=name,
+            description=description,
+            icon=icon,
+            color_code=color_code,
+            display_order=display_order
+        )
+
+        return CustomResponse().successResponse(
+            data={
+                "id": subject.id
+            },
+            description="Subject created successfully."
+        )
+
+    def get(self, request):
+
+        subjects = Subjects.objects.filter(
+            is_deleted=False
+        ).order_by(
+            "display_order",
+            "name"
+        )
+
+        data = []
+
+        for subject in subjects:
+            data.append({
+                "id": subject.id,
+                "name": subject.name,
+                "description": subject.description,
+                "icon": subject.icon,
+                "color_code": subject.color_code,
+                "display_order": subject.display_order,
+                "is_active": subject.is_active
+            })
+
+        return CustomResponse().successResponse(data=data)

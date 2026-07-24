@@ -8,7 +8,7 @@ import requests
 ## in practice mode. used in start api, submit api and skip api.
 ##
 ######################################
-def get_practice_words(kid):
+def get_practice_words(kid,no_of_questions=10):
     attempted_word_ids = list(
         KidWordProgress.objects.filter(
             kid=kid
@@ -27,12 +27,12 @@ def get_practice_words(kid):
             "audio"
         ).exclude(
             id__in=attempted_word_ids
-        ).order_by("?")[:10]
+        ).order_by("?")[:no_of_questions]
     )
 
-    if len(selected_words) < 10:
+    if len(selected_words) < no_of_questions:
         remaining_count = (
-                10 - len(selected_words)
+                no_of_questions - len(selected_words)
         )
 
         selected_word_ids = [

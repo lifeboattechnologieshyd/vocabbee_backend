@@ -12,6 +12,8 @@ class StartPractice(APIView):
 
     def post(self, request):
         kid_id = request.data.get("kid_id")
+        no_of_questions = request.data.get("no_of_questions", 10)
+        subjects = request.data.get("subjects", 10)
         if not kid_id:
             return CustomResponse().errorResponse(
                 data={},
@@ -32,9 +34,10 @@ class StartPractice(APIView):
 
         attempt = PracticeAttempts.objects.create(
             kid=kid,
-            started_at=timezone.now()
+            started_at=timezone.now(),
+            total_questions=no_of_questions
         )
-        response = get_practice_words(kid)
+        response = get_practice_words(kid, no_of_questions)
         return CustomResponse().successResponse(
             data={
                 "attempt_id": str(attempt.id),
@@ -66,11 +69,10 @@ class SubmitPracticeAnswer(APIView):
             "time_taken_seconds",
             0
         )
-
-        is_last_question = request.data.get(
-            "is_last_question",
-            False
-        )
+        # is_last_question = request.data.get(
+        #     "is_last_question",
+        #     False
+        # )
 
         attempt = PracticeAttempts.objects.select_related(
             "kid"
@@ -124,20 +126,13 @@ class SubmitPracticeAnswer(APIView):
             progress.times_correct += 1
 
         progress.last_attempted_at = timezone.now()
-
         progress.save()
-
         attempt.total_questions += 1
-
         if is_correct:
-
             attempt.correct_answers += 1
-
             # score logic can evolve later
             attempt.score += 1
-
         else:
-
             attempt.wrong_answers += 1
 
         attempt.save()
@@ -146,9 +141,9 @@ class SubmitPracticeAnswer(APIView):
             "is_correct": is_correct,
             "correct_word": word.word
         }
-        if is_last_question:
-            next_words = get_practice_words(attempt.kid)
-            response["next_words"] = next_words
+        # if is_last_question:
+        #     next_words = get_practice_words(attempt.kid)
+        #     response["next_words"] = next_words
         return CustomResponse().successResponse(
             data=response,
             description="Answer submitted successfully"
