@@ -411,7 +411,7 @@ class Words(AuditModel):
     )
 
     word = models.CharField(
-        max_length=255, unique=True
+        max_length=255
     )
     subject = models.CharField(
         max_length=255, default="English"
@@ -462,6 +462,12 @@ class Words(AuditModel):
 
     class Meta:
         db_table = "words"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["grade", "word"],
+                name="unique_grade_word",
+            )
+        ]
         indexes = [
             models.Index(
                 fields=["grade"]
