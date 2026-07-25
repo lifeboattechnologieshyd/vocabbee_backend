@@ -4,7 +4,7 @@ from .notifications.campaign_service import CreateNotificationCampaignAPIView
 from .support import AdminSupportTicketsAPIView, AdminSupportTicketDetailAPIView, AdminReplySupportTicketAPIView, \
     AdminUpdateSupportTicketStatusAPIView
 from .views import SendOtp, VerifyOTP, GradesList, WordsCrud, UploadWords, MakeAdmin, WordsAudio, DashboardAPIView, \
-    SubjectCrud
+    SubjectCrud, SubjectDeleteAPIView
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
@@ -16,6 +16,7 @@ urlpatterns = [
 
 
     path("subject", SubjectCrud.as_view()),
+    path("subject/<uuid:subject_id>", SubjectDeleteAPIView.as_view()),
 
 
     # DELETE

@@ -1096,3 +1096,22 @@ class SubjectCrud(APIView):
             })
 
         return CustomResponse().successResponse(data=data)
+
+class SubjectDeleteAPIView(APIView):
+    def delete(self, request, subject_id):
+        subject = Subjects.objects.filter(
+            id=subject_id
+        ).first()
+        if not subject:
+            return CustomResponse().errorResponse(
+                description="Subject not found."
+            )
+        if subject.words.exists():
+            return CustomResponse().errorResponse(
+                description="This subject cannot be deleted because it is associated with one or more words."
+            )
+        subject.delete()
+        return CustomResponse().successResponse(
+            data={},
+            description="Subject deleted successfully."
+        )
