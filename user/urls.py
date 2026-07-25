@@ -6,7 +6,7 @@ from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion,
     PracticeHistoryAPIView, HomeStats
 from .support import CreateSupportTicketAPIView, SupportTicketDetailAPIView, SendSupportMessageAPIView, \
     SubmitSupportTicketRatingAPIView
-from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView
+from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView, SubjectListAPIView
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
@@ -23,6 +23,9 @@ urlpatterns = [
     path("practice/end", EndPractice.as_view()),
     path("practice/attempts", PracticeHistoryAPIView.as_view()),
     path("practice/stats", PracticeStats.as_view()),
+
+
+    path("subjects", SubjectListAPIView.as_view()),
 
     ####################################
     ## Daily Challenges

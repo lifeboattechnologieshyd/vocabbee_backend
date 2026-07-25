@@ -15,7 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import Devices
 from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
-    PracticeAttemptAnswers, Referrals, CoinTransactions
+    PracticeAttemptAnswers, Referrals, CoinTransactions, Subjects
 from shared.clients.s3 import add_unique_suffix_to_filename, sanitize_filename
 from django.core.files.base import ContentFile
 from shared.clients.sms import send_sms_to_mobile
@@ -565,5 +565,27 @@ class FileUploadView(APIView):
 
 
 
+class SubjectListAPIView(APIView):
 
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        subjects = Subjects.objects.filter(
+            is_active=True
+        ).order_by(
+            "display_order",
+            "name"
+        )
+
+        data = []
+
+        for subject in subjects:
+            data.append({
+                "id": str(subject.id),
+                "name": subject.name,
+                "description": subject.description,
+                "icon": subject.icon,
+                "color_code": subject.color_code
+            })
+
+        return CustomResponse().successResponse(data=data)
 
