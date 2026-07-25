@@ -13,7 +13,7 @@ class StartPractice(APIView):
     def post(self, request):
         kid_id = request.data.get("kid_id")
         no_of_questions = request.data.get("no_of_questions", 10)
-        subjects = request.data.get("subjects", 10)
+        subjects = request.data.get("subjects", [])
         if not kid_id:
             return CustomResponse().errorResponse(
                 data={},

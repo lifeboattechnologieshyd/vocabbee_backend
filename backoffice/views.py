@@ -1055,7 +1055,6 @@ class SubjectCrud(APIView):
 
         if Subjects.objects.filter(
             name__iexact=name,
-            is_deleted=False
         ).exists():
             return CustomResponse().errorResponse(
                 description="Subject already exists."
@@ -1078,9 +1077,7 @@ class SubjectCrud(APIView):
 
     def get(self, request):
 
-        subjects = Subjects.objects.filter(
-            is_deleted=False
-        ).order_by(
+        subjects = Subjects.objects.all().order_by(
             "display_order",
             "name"
         )
