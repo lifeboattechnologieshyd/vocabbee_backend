@@ -52,13 +52,13 @@ class AuditModel(TimeAuditModel, UserAuditModel):
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, mobile, password="password", **extra_fields):
-        if not mobile:
-            raise ValueError("The Mobile Number must be set")
+    def create_user(self, password="password", **extra_fields):
+        # if not mobile:
+        #     raise ValueError("The Mobile Number must be set")
 
 
 
-        user = self.model(mobile=mobile, **extra_fields)
+        user = self.model(**extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user

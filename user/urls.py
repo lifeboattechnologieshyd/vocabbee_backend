@@ -6,12 +6,14 @@ from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion,
     PracticeHistoryAPIView, HomeStats
 from .support import CreateSupportTicketAPIView, SupportTicketDetailAPIView, SendSupportMessageAPIView, \
     SubmitSupportTicketRatingAPIView
-from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView, SubjectListAPIView
+from .views import SendOtp, VerifyOTP, Profile, GradesList, AddKid, ApplyReferral, FileUploadView, SubjectListAPIView, \
+    SendOtpV2, VerifyOTPV2
 
 urlpatterns = [
     path("send-otp", SendOtp.as_view()),
-    path("v2/send-otp", SendOtp.as_view()),
+    path("v2/send-otp", SendOtpV2.as_view()),
     path("verify-otp", VerifyOTP.as_view()),
+    path("v2/verify-otp", VerifyOTPV2.as_view()),
     path("profile", Profile.as_view()),
     path("grades", GradesList.as_view()),
     path("kids", AddKid.as_view()),

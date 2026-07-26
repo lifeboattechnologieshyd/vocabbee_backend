@@ -16,12 +16,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from db.models import Devices
 from db.models.user import OTPs, UserMaster, Grades, Kids, PracticeAttempts, KidWordProgress, Words, \
     PracticeAttemptAnswers, Referrals, CoinTransactions, Subjects
+from shared.clients.email import send_otp_email
 from shared.clients.s3 import add_unique_suffix_to_filename, sanitize_filename
 from django.core.files.base import ContentFile
 from shared.clients.sms import send_sms_to_mobile
 from shared.helper import get_practice_words, getReferralCode
 from shared.utils import CustomResponse
 EMAIL_REGEX = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+
+
 class SendOtp(APIView):
 
     def post(self, request):
@@ -103,9 +106,8 @@ class SendOtpV2(APIView):
         )
         # Detect Email or Mobile
         if re.match(EMAIL_REGEX, identifier):
-            otp_type = "EMAIL"
+            send_otp_email(otp)
         elif identifier.isdigit() and len(identifier) == 10:
-            otp_type = "MOBILE"
             print(f"OTP for {identifier} : {otp}")
             send_sms_to_mobile(otp, identifier, 12596)
         return CustomResponse().successResponse(
@@ -197,6 +199,105 @@ class VerifyOTP(APIView):
             description="Login successful"
         )
 
+class VerifyOTPV2(APIView):
+
+    def post(self, request):
+        identifier = request.data.get("identifier")
+        otp = request.data.get("otp")
+        if not identifier:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Mobile number/Email is required"
+            )
+        if not otp:
+            return CustomResponse().errorResponse(
+                data={},
+                description="OTP is required"
+            )
+        otp_record = OTPs.objects.filter(
+            identifier=identifier,
+            otp=otp,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).first()
+        if not otp_record:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Invalid or expired OTP"
+            )
+        otp_record.is_active = False
+        otp_record.save()
+        if re.match(EMAIL_REGEX, identifier):
+            user = UserMaster.objects.filter(
+                email=identifier
+            ).first()
+            if not user:
+                user = UserMaster.objects.create_user(
+                    email=identifier,
+                    referral_code=getReferralCode(),
+                    user_role=["parent"]
+                )
+            user.last_login_at = timezone.now()
+            user.last_login = timezone.now()
+            user.save(update_fields=["last_login_at", "last_login"])
+        else:
+            user = UserMaster.objects.filter(
+                mobile=identifier
+            ).first()
+            if not user:
+                user = UserMaster.objects.create_user(
+                    mobile=identifier,
+                    is_mobile_verified=True,
+                    referral_code=getReferralCode(),
+                    user_role=["parent"]
+                )
+            else:
+                if not user.is_mobile_verified:
+                    user.is_mobile_verified = True
+                    user.save()
+            user.last_login_at = timezone.now()
+            user.last_login = timezone.now()
+            user.save(update_fields=["last_login_at", "last_login"])
+        refresh = RefreshToken.for_user(user)
+        can_apply_referral = not Referrals.objects.filter(
+            referred_user=user
+        ).exists()
+        if "device_id" in request.data:
+            print("Creating device session...")
+            session = Devices.objects.create(
+                user=user,
+                device_id=request.data.get("device_id", ""),
+                platform=request.data.get("platform", ""),
+                app_version=request.data.get("app_version", ""),
+                fcm_token=request.data.get("fcm_token", ""),
+                last_login=timezone.now(),
+                is_active=True
+            )
+            print("================================")
+            print("DEVICE SESSION CREATED")
+            print("================================")
+            print(f"Session ID: {session.id}")
+            print("================================")
+        return CustomResponse().successResponse(
+            data={
+                "user_id": str(user.id),
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh),
+                "mobile": user.mobile,
+                "full_name": user.full_name,
+                "profile_image": user.profile_image,
+                "user_role": user.user_role,
+                "referral_code": user.referral_code,
+                "coins": user.coins,
+                "is_profile_completed": bool(user.full_name),
+                "can_apply_referral": can_apply_referral,
+                "kids": user.kids.count()
+            },
+            description="Login successful"
+        )
+
+
+
 class Profile(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
@@ -247,6 +348,7 @@ class Profile(APIView):
         if dob is not None:
             user.dob = dob
         if email is not None:
+            # todo: we have to check if email already exists and verify with otp
             user.email = email
 
         user.save()
