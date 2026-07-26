@@ -106,7 +106,7 @@ class SendOtpV2(APIView):
         )
         # Detect Email or Mobile
         if re.match(EMAIL_REGEX, identifier):
-            send_otp_email(otp)
+            send_otp_email(otp, identifier)
         elif identifier.isdigit() and len(identifier) == 10:
             print(f"OTP for {identifier} : {otp}")
             send_sms_to_mobile(otp, identifier, 12596)
