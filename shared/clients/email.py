@@ -13,6 +13,7 @@ def send_otp_email(otp, email='padidalaranjith@gmail.com'):
         'Content-Type': 'application/json'
     }
     payload = {
+        "from_name": "VocabBee",
         "from": "noreply@vocabbee.com",
         "to": [
             email
