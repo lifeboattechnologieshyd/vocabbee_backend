@@ -1,6 +1,7 @@
 from django.urls import path
 
-from .compete import TournamentCreateAPIView, TournamentDetailsAPIView, TournamentAssignGradesAPIView
+from .compete import TournamentCreateAPIView, TournamentDetailsAPIView, TournamentAssignGradesAPIView, \
+    TournamentAvailableWordsAPIView, TournamentAssignQuestionsAPIView, TournamentCancelAPIView, TournamentPublishAPIView
 from .notifications.campaign_service import CreateNotificationCampaignAPIView
 from .support import AdminSupportTicketsAPIView, AdminSupportTicketDetailAPIView, AdminReplySupportTicketAPIView, \
     AdminUpdateSupportTicketStatusAPIView
@@ -41,5 +42,10 @@ urlpatterns = [
     path("tournament", TournamentCreateAPIView.as_view()),
     path("tournament-details/<uuid:tournament_id>", TournamentDetailsAPIView.as_view()),
     path("tournament-assign-grades/<uuid:tournament_id>", TournamentAssignGradesAPIView.as_view()),
+
+    path("tournaments/available-words", TournamentAvailableWordsAPIView.as_view()),
+    path("tournaments/assign-words/<uuid:tournament_id>", TournamentAssignQuestionsAPIView.as_view()),
+    path("tournaments/cancel/<uuid:tournament_id>", TournamentCancelAPIView.as_view()),
+    path("tournaments/validate/<uuid:tournament_id>", TournamentPublishAPIView.as_view()),
 
 ]

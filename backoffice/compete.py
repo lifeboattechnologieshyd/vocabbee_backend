@@ -3,7 +3,7 @@ from django.db.models import Count
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from db.models import Grades
+from db.models import Grades, Words
 from db.models.compete import Tournaments, TournamentGrades, TournamentQuestions, TournamentParticipants
 from shared.utils import CustomResponse
 
@@ -246,7 +246,7 @@ class TournamentAssignGradesAPIView(APIView):
             return CustomResponse().errorResponse(
                 description="Tournament not found."
             )
-        if tournament.status != Tournaments.STATUS_DRAFT:
+        if tournament.status != "DRAFT":
             return CustomResponse().errorResponse(
                 description="Grades can only be updated while the tournament is in Draft status."
             )
@@ -281,3 +281,199 @@ class TournamentAssignGradesAPIView(APIView):
             description="Grades assigned successfully."
         )
 
+
+class TournamentAvailableWordsAPIView(APIView):
+
+    def post(self, request):
+        page = int(request.data.get("page", 1))
+        page_size = int(request.data.get("page_size", 20))
+        search = request.data.get("search")
+        grade_ids = request.data.getlist("grade_ids")
+        # difficulty_levels = request.data.getlist("difficulty_levels")
+        words = Words.objects.filter(
+            is_active=True
+        ).select_related(
+            "grade",
+            "difficulty"
+        ).order_by(
+            "word"
+        )
+        if search:
+            words = words.filter(
+                word__icontains=search
+            )
+        if grade_ids:
+            words = words.filter(
+                grade_id__in=grade_ids
+            )
+        # if difficulty_levels:
+        #     words = words.filter(
+        #         difficulty__level__in=difficulty_levels
+        #     )
+        paginator = Paginator(words, page_size)
+        page_obj = paginator.get_page(page)
+        results = []
+        for word in page_obj:
+            results.append({
+                "id": str(word.id),
+                "word": word.word,
+                "grade": {
+                    "id": str(word.grade.id),
+                    "name": word.grade.name
+                } if word.grade else None,
+                # "difficulty": {
+                #     "id": str(word.difficulty.id),
+                #     "name": word.difficulty.name
+                # } if word.difficulty else None
+            })
+        return CustomResponse().successResponse(
+            data={
+                "current_page": page,
+                "page_size": page_size,
+                "total_pages": paginator.num_pages,
+                "total_records": paginator.count,
+                "results": results
+            },
+            description="Words fetched successfully."
+        )
+
+class TournamentAssignQuestionsAPIView(APIView):
+
+    def post(self, request, tournament_id):
+
+        data = request.data
+        words = data.get("words", [])
+        tournament = Tournaments.objects.filter(
+            id=tournament_id
+        ).first()
+        if not tournament:
+            return CustomResponse().errorResponse(
+                description="Tournament not found."
+            )
+        if tournament.status != "DRAFT":
+            return CustomResponse().errorResponse(
+                description="Questions can only be updated while the tournament is in Draft status."
+            )
+        if not isinstance(words, list):
+            return CustomResponse().errorResponse(
+                description="Words should be a list."
+            )
+        if len(words) == 0:
+            return CustomResponse().errorResponse(
+                description="Please select at least one word."
+            )
+        word_ids = [item.get("word_id") for item in words]
+        db_words = Words.objects.filter(
+            id__in=word_ids,
+            is_active=True
+        )
+        if db_words.count() != len(set(word_ids)):
+            return CustomResponse().errorResponse(
+                description="One or more selected words are invalid."
+            )
+        if len(words) != tournament.total_questions:
+            return CustomResponse().errorResponse(
+                description=f"Please assign exactly {tournament.total_questions} questions."
+            )
+        word_map = {}
+        for word in db_words:
+            word_map[str(word.id)] = word
+        TournamentQuestions.objects.filter(
+            tournament=tournament
+        ).delete()
+        mappings = []
+        for item in words:
+            word = word_map.get(item.get("word_id"))
+            if not word:
+                continue
+            mappings.append(
+                TournamentQuestions(
+                    tournament=tournament,
+                    word=word,
+                    display_order=item.get("display_order")
+                )
+            )
+        TournamentQuestions.objects.bulk_create(mappings)
+        return CustomResponse().successResponse(
+            data={
+                "total_questions": len(mappings)
+            },
+            description="Questions assigned successfully."
+        )
+
+class TournamentPublishAPIView(APIView):
+
+    def post(self, request, tournament_id):
+
+        tournament = Tournaments.objects.filter(
+            id=tournament_id
+        ).first()
+
+        if not tournament:
+            return CustomResponse().errorResponse(
+                description="Tournament not found."
+            )
+
+        if tournament.status != "DRAFT":
+            return CustomResponse().errorResponse(
+                description="Only Draft tournaments can be published."
+            )
+
+        grades_count = TournamentGrades.objects.filter(
+            tournament=tournament
+        ).count()
+
+        if grades_count == 0:
+            return CustomResponse().errorResponse(
+                description="Please assign at least one grade."
+            )
+
+        questions_count = TournamentQuestions.objects.filter(
+            tournament=tournament
+        ).count()
+
+        if questions_count != tournament.total_questions:
+            return CustomResponse().errorResponse(
+                description=f"Please assign exactly {tournament.total_questions} questions."
+            )
+
+        if tournament.start_at >= tournament.end_at:
+            return CustomResponse().errorResponse(
+                description="End date & time should be greater than start date & time."
+            )
+        tournament.status = "UPCOMING"
+        tournament.save()
+        return CustomResponse().successResponse(
+            data={},
+            description="Tournament published successfully."
+        )
+
+class TournamentCancelAPIView(APIView):
+
+    def post(self, request, tournament_id):
+
+        tournament = Tournaments.objects.filter(
+            id=tournament_id
+        ).first()
+        if not tournament:
+            return CustomResponse().errorResponse(
+                description="Tournament not found."
+            )
+        if tournament.status == "CANCELLED":
+            return CustomResponse().errorResponse(
+                description="Tournament is already cancelled."
+            )
+        if tournament.status == "COMPLETED":
+            return CustomResponse().errorResponse(
+                description="Completed tournaments cannot be cancelled."
+            )
+        if tournament.status == "LIVE":
+            return CustomResponse().errorResponse(
+                description="Live tournaments cannot be cancelled."
+            )
+        tournament.status = "CANCELLED"
+        tournament.save()
+        return CustomResponse().successResponse(
+            data={},
+            description="Tournament cancelled successfully."
+        )
