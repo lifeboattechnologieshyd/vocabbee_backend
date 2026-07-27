@@ -1,4 +1,5 @@
 import json
+import os
 import time
 
 import structlog
@@ -21,13 +22,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        logger.info(
-            "validate_words command started"
-        )
+        logger.info("validate_words command started")
 
         try:
 
-            client = genai.Client()
+            client = genai.Client(
+                api_key=os.environ["GEMINI_API_KEY"]
+            )
 
             print(
                 "Gemini Client Initialized Successfully",
@@ -58,18 +59,10 @@ class Command(BaseCommand):
         total_count = pending_words.count()
 
         if total_count == 0:
-
-            print(
-                "No Pending Words Found",
-                flush=True
-            )
-
+            print("No Pending Words Found", flush=True)
             return
 
-        print(
-            f"Pending Words : {total_count}",
-            flush=True
-        )
+        print(f"Pending Words : {total_count}", flush=True)
 
         successful = []
         unsuccessful = []
@@ -80,15 +73,12 @@ class Command(BaseCommand):
         ):
 
             print("=" * 80, flush=True)
-
             print(
                 f"Processing {index}/{total_count} : {word.word}",
                 flush=True
             )
 
-            try:
-
-                prompt = f"""
+            prompt = f"""
 You are an English dictionary expert.
 
 Determine whether the following is a valid English word.
@@ -103,7 +93,6 @@ Treat these as VALID:
 - Geography terms
 - History terms
 - Educational vocabulary
-- Common academic words
 
 Return ONLY JSON.
 
@@ -115,69 +104,46 @@ Return ONLY JSON.
 Word: "{word.word}"
 """
 
-                result = None
+            result = None
 
-                for attempt in range(
-                    self.MAX_RETRIES
-                ):
+            try:
+
+                for attempt in range(self.MAX_RETRIES):
 
                     try:
 
-                        response = (
-                            client.models.generate_content(
-                                model="gemini-2.5-flash",
-                                contents=prompt,
-                            )
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=prompt,
                         )
 
                         text = response.text.strip()
 
                         if text.startswith("```"):
-
                             text = (
-                                text.replace(
-                                    "```json",
-                                    ""
-                                )
-                                .replace(
-                                    "```",
-                                    ""
-                                )
+                                text.replace("```json", "")
+                                .replace("```", "")
                                 .strip()
                             )
 
                         result = json.loads(text)
-
                         break
 
                     except Exception as e:
 
-                        if (
-                            "RESOURCE_EXHAUSTED"
-                            in str(e)
-                        ):
-
-                            logger.warning(
-                                "Gemini quota exceeded",
-                                word=word.word,
-                                attempt=attempt + 1,
-                            )
+                        if "RESOURCE_EXHAUSTED" in str(e):
 
                             print(
                                 f"Rate limit reached. Waiting {self.RETRY_DELAY} seconds...",
                                 flush=True
                             )
 
-                            time.sleep(
-                                self.RETRY_DELAY
-                            )
-
+                            time.sleep(self.RETRY_DELAY)
                             continue
 
                         raise
 
                 if result is None:
-
                     raise Exception(
                         "Maximum retry attempts exceeded."
                     )
@@ -205,23 +171,16 @@ Word: "{word.word}"
                     ]
                 )
 
-                successful.append(
-                    str(word.id)
-                )
+                successful.append(str(word.id))
 
                 print(
                     f"{word.word} -> Valid : {word.is_valid}",
                     flush=True
                 )
 
-                # Small delay to avoid bursting requests
-                time.sleep(1)
-
             except Exception as e:
 
-                unsuccessful.append(
-                    str(word.id)
-                )
+                unsuccessful.append(str(word.id))
 
                 logger.error(
                     "word_validation_failed",
@@ -234,25 +193,8 @@ Word: "{word.word}"
                     flush=True
                 )
 
-                print(
-                    str(e),
-                    flush=True
-                )
+                print(str(e), flush=True)
 
-        print("=" * 80, flush=True)
-
-        print(
-            f"Success : {len(successful)}",
-            flush=True
-        )
-
-        print(
-            f"Failed : {len(unsuccessful)}",
-            flush=True
-        )
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Completed. Success={len(successful)} Failed={len(unsuccessful)}"
-            )
-        )
+        print("=" * 80)
+        print(f"Success : {len(successful)}")
+        print(f"Failed : {len(unsuccessful)}")
