@@ -394,6 +394,9 @@ class Kids(AuditModel):
         db_table = "kids"
 
 class Words(AuditModel):
+    class ValidationSource(models.TextChoices):
+        AI = "AI", "AI"
+        MANUAL = "MANUAL", "Manual"
     VOICE_STATUS = (
         ("GENERATED", "GENERATED"),
         ("PENDING", "PENDING"),
@@ -457,6 +460,38 @@ class Words(AuditModel):
         choices=VOICE_STATUS,
         default="PENDING",
         db_index=True
+    )
+    is_valid = models.BooleanField(
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
+    validation_source = models.CharField(
+        max_length=10,
+        choices=ValidationSource.choices,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
+    validated_by = models.ForeignKey(
+        UserMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="validated_words",
+        help_text="User who manually validated the word."
+    )
+
+    validated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    validation_reason = models.TextField(
+        null=True,
+        blank=True,
     )
 
 
