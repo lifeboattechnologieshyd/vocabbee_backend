@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .compete import TournamentResultAPIView, TournamentLeaderboardAPIView, TournamentSubmitAnswerAPIView, \
+    TournamentStartAPIView, TournamentJoinAPIView, TournamentListAPIView
 from .dailychallenges import DailyChallengesAPIView, DailyChallengeWordsAPIView, DailyChallengeSubmitAPIView, \
     DailyChallengeResultAPIView, DailyChallengeStatsAPIView, DailyChallengeHistoryAPIView
 from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion, EndPractice, PracticeStats, \
@@ -52,5 +54,15 @@ urlpatterns = [
     path("support/tickets/<uuid:ticket_id>/",SupportTicketDetailAPIView.as_view()),
     path("support/tickets/message", SendSupportMessageAPIView.as_view()),
     path("support/tickets/rate",SubmitSupportTicketRatingAPIView.as_view()),
+
+
+
+
+    path("tournaments", TournamentListAPIView.as_view()),
+    path("tournaments/join/<uuid:tournament_id>", TournamentJoinAPIView.as_view()),
+    path("tournaments/start/<uuid:tournament_id>", TournamentStartAPIView.as_view()),
+    path("tournaments/submit/<uuid:tournament_id>", TournamentSubmitAnswerAPIView.as_view()),
+    path("tournaments/result/<uuid:tournament_id>", TournamentResultAPIView.as_view()),
+    path("tournaments/leaderboard/<uuid:tournament_id>", TournamentLeaderboardAPIView.as_view()),
 
 ]
