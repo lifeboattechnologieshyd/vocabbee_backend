@@ -288,7 +288,7 @@ class TournamentAvailableWordsAPIView(APIView):
         page = int(request.data.get("page", 1))
         page_size = int(request.data.get("page_size", 20))
         search = request.data.get("search")
-        grade_ids = request.data.getlist("grade_ids")
+        grade_ids = request.data.get("grade_ids")
         # difficulty_levels = request.data.getlist("difficulty_levels")
         words = Words.objects.filter(
             is_active=True
