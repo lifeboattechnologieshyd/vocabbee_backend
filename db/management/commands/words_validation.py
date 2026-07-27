@@ -16,9 +16,14 @@ logger = structlog.get_logger("default")
 class Command(BaseCommand):
     help = "Validate words using Gemini AI"
 
+    MAX_RETRIES = 5
+    RETRY_DELAY = 60
+
     def handle(self, *args, **options):
 
-        logger.info("validate_words command started")
+        logger.info(
+            "validate_words command started"
+        )
 
         try:
 
@@ -47,7 +52,7 @@ class Command(BaseCommand):
             Words.objects.filter(
                 is_active=True,
                 validation_source__isnull=True
-            )[:1000]
+            ).order_by("word")[:1000]
         )
 
         total_count = pending_words.count()
@@ -88,7 +93,7 @@ You are an English dictionary expert.
 
 Determine whether the following is a valid English word.
 
-Consider the following as VALID:
+Treat these as VALID:
 - Standard English words
 - Scientific terms
 - Biology terms
@@ -100,7 +105,7 @@ Consider the following as VALID:
 - Educational vocabulary
 - Common academic words
 
-Return ONLY valid JSON.
+Return ONLY JSON.
 
 {{
     "is_valid": true,
@@ -110,12 +115,72 @@ Return ONLY valid JSON.
 Word: "{word.word}"
 """
 
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                )
+                result = None
 
-                result = json.loads(response.text)
+                for attempt in range(
+                    self.MAX_RETRIES
+                ):
+
+                    try:
+
+                        response = (
+                            client.models.generate_content(
+                                model="gemini-2.5-flash",
+                                contents=prompt,
+                            )
+                        )
+
+                        text = response.text.strip()
+
+                        if text.startswith("```"):
+
+                            text = (
+                                text.replace(
+                                    "```json",
+                                    ""
+                                )
+                                .replace(
+                                    "```",
+                                    ""
+                                )
+                                .strip()
+                            )
+
+                        result = json.loads(text)
+
+                        break
+
+                    except Exception as e:
+
+                        if (
+                            "RESOURCE_EXHAUSTED"
+                            in str(e)
+                        ):
+
+                            logger.warning(
+                                "Gemini quota exceeded",
+                                word=word.word,
+                                attempt=attempt + 1,
+                            )
+
+                            print(
+                                f"Rate limit reached. Waiting {self.RETRY_DELAY} seconds...",
+                                flush=True
+                            )
+
+                            time.sleep(
+                                self.RETRY_DELAY
+                            )
+
+                            continue
+
+                        raise
+
+                if result is None:
+
+                    raise Exception(
+                        "Maximum retry attempts exceeded."
+                    )
 
                 word.is_valid = result.get(
                     "is_valid",
@@ -140,21 +205,28 @@ Word: "{word.word}"
                     ]
                 )
 
-                successful.append(str(word.id))
+                successful.append(
+                    str(word.id)
+                )
 
                 print(
                     f"{word.word} -> Valid : {word.is_valid}",
                     flush=True
                 )
 
+                # Small delay to avoid bursting requests
+                time.sleep(1)
+
             except Exception as e:
 
-                unsuccessful.append(str(word.id))
+                unsuccessful.append(
+                    str(word.id)
+                )
 
                 logger.error(
                     "word_validation_failed",
                     word=word.word,
-                    error=str(e)
+                    error=str(e),
                 )
 
                 print(
@@ -166,8 +238,6 @@ Word: "{word.word}"
                     str(e),
                     flush=True
                 )
-
-            time.sleep(0.2)
 
         print("=" * 80, flush=True)
 
