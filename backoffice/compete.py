@@ -294,7 +294,6 @@ class TournamentAvailableWordsAPIView(APIView):
             is_active=True
         ).select_related(
             "grade",
-            "difficulty"
         ).order_by(
             "word"
         )
@@ -306,10 +305,6 @@ class TournamentAvailableWordsAPIView(APIView):
             words = words.filter(
                 grade_id__in=grade_ids
             )
-        # if difficulty_levels:
-        #     words = words.filter(
-        #         difficulty__level__in=difficulty_levels
-        #     )
         paginator = Paginator(words, page_size)
         page_obj = paginator.get_page(page)
         results = []
@@ -321,10 +316,6 @@ class TournamentAvailableWordsAPIView(APIView):
                     "id": str(word.grade.id),
                     "name": word.grade.name
                 } if word.grade else None,
-                # "difficulty": {
-                #     "id": str(word.difficulty.id),
-                #     "name": word.difficulty.name
-                # } if word.difficulty else None
             })
         return CustomResponse().successResponse(
             data={
