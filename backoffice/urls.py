@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .compete import TournamentCreateAPIView, TournamentDetailsAPIView, TournamentAssignGradesAPIView
 from .notifications.campaign_service import CreateNotificationCampaignAPIView
 from .support import AdminSupportTicketsAPIView, AdminSupportTicketDetailAPIView, AdminReplySupportTicketAPIView, \
     AdminUpdateSupportTicketStatusAPIView
@@ -36,5 +37,9 @@ urlpatterns = [
 
     # create notification service
     path("create-campaign", CreateNotificationCampaignAPIView.as_view()),
+
+    path("tournament", TournamentCreateAPIView.as_view()),
+    path("tournament-details/<uuid:tournament_id>", TournamentDetailsAPIView.as_view()),
+    path("tournament-assign-grades/<uuid:tournament_id>", TournamentAssignGradesAPIView.as_view()),
 
 ]
