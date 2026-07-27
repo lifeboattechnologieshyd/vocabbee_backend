@@ -280,6 +280,8 @@ CRONJOBS = [
    # Every day at 12:05 AM schedule_daily_words
     ("5 0 * * *","django.core.management.call_command",["schedule_daily_words"],),
 
+    ("0 */2 * * *","django.core.management.call_command",["words_validation"],),
+
 
 
 
