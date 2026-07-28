@@ -503,6 +503,7 @@ class TournamentHistoryAPIView(APIView):
                 "tournament_type": tournament.tournament_type,
                 "status": tournament.status,
                 "score": participant.total_points,
+                "rank": participant.rank,
                 "correct_answers": participant.correct_answers,
                 "wrong_answers": participant.wrong_answers,
                 "attempted_questions": participant.attempted_questions,
