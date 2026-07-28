@@ -440,3 +440,83 @@ class TournamentResultAPIView(APIView):
             },
             description="Tournament result fetched successfully."
         )
+
+
+from django.core.paginator import Paginator
+
+class TournamentHistoryAPIView(APIView):
+
+    def get(self, request):
+
+        kid_id = request.GET.get("kid_id")
+
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+
+        if not kid:
+            return CustomResponse().errorResponse(
+                description="Kid not found."
+            )
+
+        page = int(request.GET.get("page", 1))
+        page_size = int(request.GET.get("page_size", 20))
+
+        status = request.GET.get("status")
+        search = request.GET.get("search")
+
+        participants = TournamentParticipants.objects.filter(
+            kid=kid
+        ).select_related(
+            "tournament"
+        ).order_by(
+            "-created_at"
+        )
+
+        if status:
+            participants = participants.filter(
+                tournament__status=status
+            )
+
+        if search:
+            participants = participants.filter(
+                tournament__title__icontains=search
+            )
+
+        paginator = Paginator(
+            participants,
+            page_size
+        )
+
+        page_obj = paginator.get_page(page)
+
+        results = []
+
+        for participant in page_obj:
+
+            tournament = participant.tournament
+
+            results.append({
+                "tournament_id": str(tournament.id),
+                "title": tournament.title,
+                "tournament_type": tournament.tournament_type,
+                "status": tournament.status,
+                "score": participant.total_points,
+                "correct_answers": participant.correct_answers,
+                "wrong_answers": participant.wrong_answers,
+                "attempted_questions": participant.attempted_questions,
+                "time_taken_seconds": participant.time_taken_seconds,
+                "completed_at": participant.completed_at
+            })
+
+        return CustomResponse().successResponse(
+            data={
+                "current_page": page,
+                "page_size": page_size,
+                "total_pages": paginator.num_pages,
+                "total_records": paginator.count,
+                "results": results
+            },
+            description="Tournament history fetched successfully."
+        )

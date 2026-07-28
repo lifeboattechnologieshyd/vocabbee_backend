@@ -64,5 +64,6 @@ urlpatterns = [
     path("tournaments/submit/<uuid:tournament_id>", TournamentSubmitAnswerAPIView.as_view()),
     path("tournaments/result/<uuid:tournament_id>", TournamentResultAPIView.as_view()),
     path("tournaments/leaderboard/<uuid:tournament_id>", TournamentLeaderboardAPIView.as_view()),
+    path("tournaments/history", TournamentLeaderboardAPIView.as_view()),
 
 ]
