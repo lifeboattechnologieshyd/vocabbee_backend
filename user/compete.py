@@ -14,7 +14,7 @@ class TournamentListAPIView(APIView):
         kid = request.user.kids.filter(
             id=kid_id,
             is_active=True
-        )
+        ).first()
         if not kid:
             return CustomResponse().errorResponse(
                 description="Kid not found."
