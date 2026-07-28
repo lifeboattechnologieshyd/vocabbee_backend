@@ -40,13 +40,26 @@ class TournamentListAPIView(APIView):
         )
         joined_tournament_ids = set(joined_tournament_ids)
         data = []
+
+
+
         for tournament in tournaments:
+
+            participant = TournamentParticipants.objects.filter(
+                tournament=tournament,
+                kid=kid
+            ).first()
+            participation_status = "NOT_JOINED"
+            if participant:
+                participation_status = participant.status
+
             data.append({
                 "id": str(tournament.id),
                 "title": tournament.title,
                 "description": tournament.description,
                 "tournament_type": tournament.tournament_type,
                 "status": tournament.status,
+                "participation_status": participation_status,
                 "total_questions": tournament.total_questions,
                 "duration_minutes": tournament.duration_minutes,
                 "entry_fee": tournament.entry_fee,
@@ -191,7 +204,7 @@ class TournamentStartAPIView(APIView):
                 "remaining_time": tournament.duration_minutes * 60,
                 "question": {
                     "question_id": str(question.id),
-                    "question_no": 1,
+                    "question_no": question.display_order,
                     "total_questions": tournament.total_questions,
                     "word": {
                         "word_id": str(question.word.id),
