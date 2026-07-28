@@ -24,7 +24,7 @@ class TournamentListAPIView(APIView):
                 "UPCOMING",
                 "LIVE"
             ],
-            tournamentgrades__grade=kid.grade
+            eligible_grades__grade=kid.grade
         ).distinct().annotate(
             participant_count=Count("participants", distinct=True)
         ).order_by(
