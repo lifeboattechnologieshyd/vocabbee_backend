@@ -164,8 +164,17 @@ class TournamentStartAPIView(APIView):
             participant.status = "STARTED"
             participant.save()
 
+        answered_question_ids = TournamentAnswers.objects.filter(
+            participant=participant
+        ).values_list(
+            "tournament_question_id",
+            flat=True
+        )
+
         question = TournamentQuestions.objects.filter(
             tournament=tournament
+        ).exclude(
+            id__in=answered_question_ids
         ).select_related(
             "word"
         ).order_by(
