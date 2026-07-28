@@ -197,7 +197,6 @@ class TournamentStartAPIView(APIView):
                         "origin_audio_url":question.word.audio.origin_audio_url,
                         "usage_audio_url":question.word.audio.usage_audio_url
                     },
-                    "audio": question.word.audio.url if getattr(question.word, "audio", None) else ""
                 }
             },
             description="Tournament started successfully."
@@ -313,7 +312,6 @@ class TournamentSubmitAnswerAPIView(APIView):
                         "origin_audio_url":question.word.audio.origin_audio_url,
                         "usage_audio_url":question.word.audio.usage_audio_url
                     },
-                    "audio": next_question.word.audio.url if getattr(next_question.word, "audio", None) else ""
                 }
             },
             description="Answer submitted successfully."
