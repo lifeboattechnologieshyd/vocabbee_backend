@@ -64,7 +64,12 @@ class TournamentListAPIView(APIView):
 class TournamentJoinAPIView(APIView):
 
     def post(self, request, tournament_id):
-        kid = request.kid
+        kid_id = request.GET.get("kid_id")
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+
         if not kid:
             return CustomResponse().errorResponse(
                 description="Kid not found."
@@ -121,7 +126,11 @@ class TournamentJoinAPIView(APIView):
 class TournamentStartAPIView(APIView):
 
     def post(self, request, tournament_id):
-        kid = request.kid
+        kid_id = request.GET.get("kid_id")
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
         if not kid:
             return CustomResponse().errorResponse(
                 description="Kid not found."
@@ -197,7 +206,11 @@ class TournamentStartAPIView(APIView):
 class TournamentSubmitAnswerAPIView(APIView):
 
     def post(self, request, tournament_id):
-        kid = request.kid
+        kid_id = request.GET.get("kid_id")
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
         if not kid:
             return CustomResponse().errorResponse(
                 description="Kid not found."
@@ -310,7 +323,15 @@ class TournamentSubmitAnswerAPIView(APIView):
 class TournamentLeaderboardAPIView(APIView):
 
     def get(self, request, tournament_id):
-        kid = request.kid
+        kid_id = request.GET.get("kid_id")
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+        if not kid:
+            return CustomResponse().errorResponse(
+                description="Kid not found."
+            )
         tournament = Tournaments.objects.filter(
             id=tournament_id
         ).first()
@@ -358,7 +379,15 @@ class TournamentLeaderboardAPIView(APIView):
 class TournamentResultAPIView(APIView):
 
     def get(self, request, tournament_id):
-        kid = request.kid
+        kid_id = request.GET.get("kid_id")
+        kid = request.user.kids.filter(
+            id=kid_id,
+            is_active=True
+        ).first()
+        if not kid:
+            return CustomResponse().errorResponse(
+                description="Kid not found."
+            )
         participant = TournamentParticipants.objects.filter(
             tournament_id=tournament_id,
             kid=kid
