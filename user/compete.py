@@ -382,7 +382,7 @@ class TournamentLeaderboardAPIView(APIView):
                 "rank": rank,
                 "kid_id": str(participant.kid.id),
                 "name": participant.kid.name,
-                "profile_picture": participant.kid.profile_picture.url if participant.kid.profile_picture else "",
+                "profile_picture": participant.kid.profile_image if participant.kid.profile_image else "",
                 "score": participant.total_points,
                 "correct_answers": participant.correct_answers,
                 "time_taken_seconds": participant.time_taken_seconds
