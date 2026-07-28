@@ -368,7 +368,7 @@ class TournamentLeaderboardAPIView(APIView):
             leaderboard.append({
                 "rank": rank,
                 "kid_id": str(participant.kid.id),
-                "name": participant.kid.full_name,
+                "name": participant.kid.name,
                 "profile_picture": participant.kid.profile_picture.url if participant.kid.profile_picture else "",
                 "score": participant.total_points,
                 "correct_answers": participant.correct_answers,
