@@ -408,7 +408,8 @@ class WordsCrud(APIView):
         difficulty = request.GET.get("difficulty")
 
         words = Words.objects.filter(
-            is_active=True
+            is_active=True,
+            voice_status='GENERATED',
         ).select_related(
             "grade",
             "audio"
