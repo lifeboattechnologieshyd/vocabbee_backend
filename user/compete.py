@@ -227,6 +227,7 @@ class TournamentStartAPIView(APIView):
 class TournamentSubmitAnswerAPIView(APIView):
 
     def post(self, request, tournament_id):
+        print(f"submit ans api request with payload ===> {request.data}")
         kid_id = request.GET.get("kid_id")
         kid = request.user.kids.filter(
             id=kid_id,
@@ -253,7 +254,6 @@ class TournamentSubmitAnswerAPIView(APIView):
             kid=kid,
             status="STARTED"
         ).first()
-
         if not participant:
             return CustomResponse().errorResponse(
                 description="Tournament has not been started."
@@ -275,6 +275,8 @@ class TournamentSubmitAnswerAPIView(APIView):
             return CustomResponse().errorResponse(
                 description="Question already answered."
             )
+        print(f"actual word is  ===> {question.word.word.strip().lower()}")
+        print(f"entered word is  ===> {answer.lower()}")
         correct_answer = question.word.word.strip().lower()
         is_correct = answer.lower() == correct_answer
         points = 10 if is_correct else 0
