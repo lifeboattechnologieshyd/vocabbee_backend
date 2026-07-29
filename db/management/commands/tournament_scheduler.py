@@ -13,11 +13,9 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         logger.info("Tournament Scheduler CRON JOB")
         logger.info("UPCOMING to LIVE ====")
-
         self.make_live()
         logger.info("LIVE to COMPLETED")
         self.make_completed()
-
         self.stdout.write(
             self.style.SUCCESS("Tournament scheduler executed successfully.")
         )
