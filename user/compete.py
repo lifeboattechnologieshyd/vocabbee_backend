@@ -198,6 +198,7 @@ class TournamentStartAPIView(APIView):
             return CustomResponse().errorResponse(
                 description="No questions found."
             )
+        print(str(question.word.word))
         return CustomResponse().successResponse(
             data={
                 "participant_id": str(participant.id),
@@ -315,6 +316,7 @@ class TournamentSubmitAnswerAPIView(APIView):
                 },
                 description="Tournament completed successfully."
             )
+        print(str(question.word.word))
         return CustomResponse().successResponse(
             data={
                 "completed": False,
