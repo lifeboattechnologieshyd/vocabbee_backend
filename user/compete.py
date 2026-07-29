@@ -326,17 +326,17 @@ class TournamentSubmitAnswerAPIView(APIView):
                     "question_no": next_question.display_order,
                     "total_questions": tournament.total_questions,
                     "word": {
-                        "word_id": str(question.word.id),
-                        "word": str(question.word.word),
-                        "meaning": str(question.word.meaning),
-                        "part_of_speech": str(question.word.part_of_speech),
-                        "origin": str(question.word.origin),
-                        "usage": str(question.word.usage),
-                        "pronunciation_audio_url": question.word.audio.pronunciation_audio_url,
-                        "meaning_audio_url":question.word.audio.meaning_audio_url,
-                        "part_of_speech_audio_url":question.word.audio.part_of_speech_audio_url,
-                        "origin_audio_url":question.word.audio.origin_audio_url,
-                        "usage_audio_url":question.word.audio.usage_audio_url
+                        "word_id": str(next_question.word.id),
+                        "word": str(next_question.word.word),
+                        "meaning": str(next_question.word.meaning),
+                        "part_of_speech": str(next_question.word.part_of_speech),
+                        "origin": str(next_question.word.origin),
+                        "usage": str(next_question.word.usage),
+                        "pronunciation_audio_url": next_question.word.audio.pronunciation_audio_url,
+                        "meaning_audio_url":next_question.word.audio.meaning_audio_url,
+                        "part_of_speech_audio_url":next_question.word.audio.part_of_speech_audio_url,
+                        "origin_audio_url":next_question.word.audio.origin_audio_url,
+                        "usage_audio_url":next_question.word.audio.usage_audio_url
                     },
                 }
             },
