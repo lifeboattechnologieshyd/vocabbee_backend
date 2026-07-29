@@ -301,7 +301,8 @@ class TournamentSubmitAnswerAPIView(APIView):
             tournament=tournament,
             display_order=question.display_order + 1
         ).select_related(
-            "word"
+            "word",
+            "word__audio"
         ).first()
         if not next_question:
             participant.status = "COMPLETED"
