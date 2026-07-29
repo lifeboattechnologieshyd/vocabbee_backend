@@ -190,7 +190,6 @@ class TournamentStartAPIView(APIView):
             id__in=answered_question_ids
         ).select_related(
             "word",
-            "word_audio"
         ).order_by(
             "display_order"
         ).first()
@@ -215,11 +214,11 @@ class TournamentStartAPIView(APIView):
                         "part_of_speech": str(question.word.part_of_speech),
                         "origin": str(question.word.origin),
                         "usage": str(question.word.usage),
-                        "pronunciation_audio_url": question.word.audio.pronunciation_audio_url,
-                        "meaning_audio_url":question.word.audio.meaning_audio_url,
-                        "part_of_speech_audio_url":question.word.audio.part_of_speech_audio_url,
-                        "origin_audio_url":question.word.audio.origin_audio_url,
-                        "usage_audio_url":question.word.audio.usage_audio_url
+                        "pronunciation_audio_url": question.word.pronunciation_audio_url,
+                        "meaning_audio_url":question.word.meaning_audio_url,
+                        "part_of_speech_audio_url":question.audio.part_of_speech_audio_url,
+                        "origin_audio_url":question.word.origin_audio_url,
+                        "usage_audio_url":question.word.usage_audio_url
                     },
                 }
             },
