@@ -7,71 +7,107 @@ from db.models.compete import Tournaments, TournamentParticipants
 logger = structlog.get_logger("default")
 from datetime import datetime
 
-
 class Command(BaseCommand):
-
     help = "Tournament Scheduler"
 
     def handle(self, *args, **kwargs):
-        with open("/tmp/tournament_scheduler.log", "a") as f:
-            f.write(f"Executed at {datetime.now()}\n")
-        logger.info("Tournament Scheduler CRON JOB")
-        logger.info("UPCOMING to LIVE ====")
-        self.make_live()
-        logger.info("LIVE to COMPLETED")
-        self.make_completed()
-        self.stdout.write(
-            self.style.SUCCESS("Tournament scheduler executed successfully.")
-        )
+        try:
+            # Temporary debug (remove after verification)
+            with open("/tmp/tournament_scheduler.log", "a") as f:
+                f.write(f"Executed at {datetime.now()}\n")
+
+            logger.info("========== Tournament Scheduler Started ==========")
+
+            live_count = self.make_live()
+            completed_count = self.make_completed()
+
+            logger.info(
+                f"Tournament Scheduler Completed | "
+                f"Moved to LIVE: {live_count}, "
+                f"Moved to COMPLETED: {completed_count}"
+            )
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Scheduler completed successfully. "
+                    f"LIVE: {live_count}, COMPLETED: {completed_count}"
+                )
+            )
+
+        except Exception:
+            logger.exception("Tournament Scheduler Failed")
+            raise
 
     def make_live(self):
+        logger.info("Checking UPCOMING tournaments...")
+
         tournaments = Tournaments.objects.filter(
             status="UPCOMING",
             start_at__lte=timezone.now()
         )
-        count = tournaments.update(
-            status="LIVE"
-        )
-        logger.info(count)
-        logger.info("UPCOMING to LIVE Completed")
-        self.stdout.write(
-            self.style.SUCCESS(f"{count} tournament(s) moved to LIVE.")
-        )
+
+        count = tournaments.update(status="LIVE")
+
+        logger.info(f"{count} tournament(s) moved to LIVE.")
+
+        return count
 
     def make_completed(self):
+        logger.info("Checking LIVE tournaments...")
+
         tournaments = Tournaments.objects.filter(
             status="LIVE",
             end_at__lte=timezone.now()
         )
-        logger.info("LIVE TOURNAMENTS TO MOVE TO COMPLETED ARE ====")
-        logger.info(len(tournaments))
+
+        count = tournaments.count()
+
+        logger.info(f"Found {count} tournament(s) to complete.")
 
         for tournament in tournaments:
+            logger.info(
+                f"Processing Tournament ID={tournament.id}"
+            )
+
             tournament.status = "COMPLETED"
             tournament.save(update_fields=["status"])
-            logger.info("One tournament moved to completed but about to calculate rankings")
+
             self.calculate_ranks(tournament)
 
-        self.stdout.write(
-            self.style.SUCCESS(f"{tournaments.count()} tournament(s) completed.")
-        )
+            logger.info(
+                f"Tournament ID={tournament.id} marked COMPLETED."
+            )
+
+        return count
 
     def calculate_ranks(self, tournament):
+        logger.info(
+            f"Calculating ranks for Tournament ID={tournament.id}"
+        )
+
         participants = list(
             TournamentParticipants.objects.filter(
                 tournament=tournament
             ).order_by(
                 "-total_points",
                 "time_taken_seconds",
-                "completed_at"
+                "completed_at",
             )
         )
-        rank = 1
-        for participant in participants:
-            participant.rank = rank
-            rank += 1
-        TournamentParticipants.objects.bulk_update(
-            participants,
-            ["rank"]
+
+        logger.info(
+            f"Participants found: {len(participants)}"
         )
-        logger.info("One tournament rank calculations are completed")
+
+        for rank, participant in enumerate(participants, start=1):
+            participant.rank = rank
+
+        if participants:
+            TournamentParticipants.objects.bulk_update(
+                participants,
+                ["rank"],
+            )
+
+        logger.info(
+            f"Rank calculation completed for Tournament ID={tournament.id}"
+        )
