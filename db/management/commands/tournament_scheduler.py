@@ -5,12 +5,16 @@ from django.utils import timezone
 from db.models.compete import Tournaments, TournamentParticipants
 
 logger = structlog.get_logger("default")
+from datetime import datetime
+
 
 class Command(BaseCommand):
 
     help = "Tournament Scheduler"
 
     def handle(self, *args, **kwargs):
+        with open("/tmp/tournament_scheduler.log", "a") as f:
+            f.write(f"Executed at {datetime.now()}\n")
         logger.info("Tournament Scheduler CRON JOB")
         logger.info("UPCOMING to LIVE ====")
         self.make_live()
