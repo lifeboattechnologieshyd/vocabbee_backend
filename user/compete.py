@@ -190,7 +190,6 @@ class TournamentStartAPIView(APIView):
             id__in=answered_question_ids
         ).select_related(
             "word",
-            "word__audio",
         ).order_by(
             "display_order"
         ).first()
