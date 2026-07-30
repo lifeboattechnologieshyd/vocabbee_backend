@@ -196,3 +196,67 @@ def send_visible_push_notification(user,
         "sent_count": sent_count,
         "results": results
     }
+
+def send_bulk_push_notification(tokens,
+                                title,
+                                body,
+                                payload,
+                                notification_type,
+                                priority="high"):
+    init_firebase()
+    print("Firebase Initialized")
+    payload = payload or {}
+    final_payload = {
+        "type": notification_type,
+        **payload
+    }
+    print(final_payload)
+    results=[]
+    for i in range(0, len(tokens), 500):
+        batch = tokens[i:i + 500]
+        try:
+            message = messaging.MulticastMessage(
+                tokens=batch,
+                notification=messaging.Notification(
+                    title=title,
+                    body=body
+                ),
+                data={
+                    key: (
+                        json.dumps(value)
+                        if isinstance(value, (dict, list))
+                        else str(value)
+                    )
+                    for key, value in final_payload.items()
+                },
+                android=messaging.AndroidConfig(
+                    priority=priority,
+                    notification=messaging.AndroidNotification(
+                        channel_id="default"
+                    )
+                ),
+                apns=messaging.APNSConfig(
+                    headers={
+                        "apns-priority": "10"
+                    },
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(
+                            sound="default",
+                            badge=1
+                        )
+                    )
+                )
+            )
+            response = messaging.send_each_for_multicast(message)
+            print("push is sent")
+
+        except exceptions.FirebaseError as error:
+            print(error.code)
+            print(error.cause)
+
+        except Exception as error:
+            print(error)
+            error_message = str(error)
+
+
+

@@ -3,7 +3,8 @@ from django.db.models import Count
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from db.models import Grades, Words
+from config.firebase import send_visible_push_notification, send_bulk_push_notification
+from db.models import Grades, Words, UserMaster, Devices
 from db.models.compete import Tournaments, TournamentGrades, TournamentQuestions, TournamentParticipants
 from shared.utils import CustomResponse
 
@@ -435,6 +436,7 @@ class TournamentPublishAPIView(APIView):
             )
         tournament.status = "UPCOMING"
         tournament.save()
+        TournyReminders.tourney_active(tournament)
         return CustomResponse().successResponse(
             data={},
             description="Tournament published successfully."
@@ -469,3 +471,38 @@ class TournamentCancelAPIView(APIView):
             data={},
             description="Tournament cancelled successfully."
         )
+
+
+class TournyReminders:
+    @classmethod
+    def tourney_active(cls, tournament):
+        eligible_grade_ids = TournamentGrades.objects.filter(
+            tournament=tournament
+        ).values_list(
+            "grade_id",
+            flat=True
+        )
+        user_ids = UserMaster.objects.filter(
+            kids__grade_id__in=eligible_grade_ids,
+        ).distinct().values_list(
+            "id",
+            flat=True
+        )
+        tokens = Devices.objects.filter(
+            user_id__in=user_ids,
+            is_active=True
+        ).exclude(
+            fcm_token=""
+        ).values_list(
+            "fcm_token",
+            flat=True
+        )
+        pushinfo = send_bulk_push_notification(tokens,
+                                              "🏆 New Tournament Published",
+                                              f"{tournament.title} is now open for registration.",
+                                              {
+                                                  "tournament_id": tournament.id
+                                              },
+                                               "TOURNEY_PUBLISH",
+                                               )
+        print(pushinfo)
