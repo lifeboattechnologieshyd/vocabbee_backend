@@ -291,7 +291,8 @@ class TournamentAvailableWordsAPIView(APIView):
         grade_ids = request.data.get("grade_ids")
         # difficulty_levels = request.data.getlist("difficulty_levels")
         words = Words.objects.filter(
-            is_active=True
+            is_active=True,
+            voice_status='GENERATED',
         ).select_related(
             "grade",
         ).order_by(
