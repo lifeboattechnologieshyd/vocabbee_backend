@@ -387,6 +387,7 @@ class TournamentLeaderboardAPIView(APIView):
                 my_rank = rank
 
             leaderboard.append({
+                "id": participant.id,
                 "rank": rank,
                 "kid_id": str(participant.kid.id),
                 "name": participant.kid.name,
@@ -530,4 +531,54 @@ class TournamentHistoryAPIView(APIView):
                 "results": results
             },
             description="Tournament history fetched successfully."
+        )
+
+
+class TournamentAnswersAPIView(APIView):
+
+    def get(self, request):
+        participant_id = request.get("participant_id")
+        participant = TournamentParticipants.objects.filter(
+            id=participant_id
+        ).first()
+        if not participant:
+            return CustomResponse().errorResponse(
+                description="Participant not found."
+            )
+        answers = (
+            TournamentAnswers.objects
+            .filter(
+                participant=participant
+            )
+            .select_related(
+                "tournament_question__word",
+                "tournament_question__word__audio"
+            )
+            .order_by(
+                "tournament_question__display_order"
+            )
+        )
+        data = []
+        for answer in answers:
+            word = answer.tournament_question.word
+            audio = getattr(word, "audio", None)
+            data.append({
+                "question_no": answer.tournament_question.display_order,
+                "word_id": str(word.id),
+                "actual_word": word.word,
+                "typed_answer": answer.typed_answer,
+                "is_correct": answer.is_correct,
+                "meaning": word.meaning,
+                "part_of_speech": word.part_of_speech,
+                "origin": word.origin,
+                "usage": word.usage,
+                "pronunciation_audio_url": audio.pronunciation_audio_url if audio else None,
+                "meaning_audio_url": audio.meaning_audio_url if audio else None,
+                "part_of_speech_audio_url": audio.part_of_speech_audio_url if audio else None,
+                "origin_audio_url": audio.origin_audio_url if audio else None,
+                "usage_audio_url": audio.usage_audio_url if audio else None,
+            })
+        return CustomResponse().successResponse(
+            data=data,
+            description="Answers fetched successfully."
         )
