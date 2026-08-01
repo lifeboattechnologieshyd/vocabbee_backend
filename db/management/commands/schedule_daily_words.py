@@ -87,6 +87,7 @@ class Command(BaseCommand):
                     Words.objects.filter(
                         grade=grade,
                         is_active=True,
+                        is_valid= True,
                     )
                     .exclude(id__in=used_word_ids)
                     .order_by("?")
