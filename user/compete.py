@@ -312,6 +312,7 @@ class TournamentSubmitAnswerAPIView(APIView):
             return CustomResponse().successResponse(
                 data={
                     "completed": True,
+                    "is_correct": is_correct,
                     "score": participant.total_points,
                     "correct_answers": participant.correct_answers,
                     "wrong_answers": participant.wrong_answers
@@ -323,6 +324,7 @@ class TournamentSubmitAnswerAPIView(APIView):
             data={
                 "completed": False,
                 "score": participant.total_points,
+                "is_correct": is_correct,
                 "question": {
                     "question_id": str(next_question.id),
                     "question_no": next_question.display_order,
