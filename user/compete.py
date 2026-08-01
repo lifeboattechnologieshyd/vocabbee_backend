@@ -185,7 +185,8 @@ class TournamentStartAPIView(APIView):
         )
 
         question = TournamentQuestions.objects.filter(
-            tournament=tournament
+            tournament=tournament,
+            word__is_valid=True,
         ).exclude(
             id__in=answered_question_ids
         ).select_related(

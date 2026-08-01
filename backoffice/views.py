@@ -435,7 +435,9 @@ class WordsCrud(APIView):
         start = (page - 1) * page_size
         end = start + page_size
         words = words.order_by(
-            "word"
+            "is_valid",
+            "word",
+
         )[start:end]
         response = []
         for word in words:
@@ -454,7 +456,11 @@ class WordsCrud(APIView):
                 "grade": {
                     "id": str(word.grade.id),
                     "name": word.grade.name
-                }
+                },
+                "is_valid": word.is_valid,
+                "validation_reason": word.validation_reason,
+                "validation_source": word.validation_source,
+                "validated_at": word.validated_at,
             }
             if hasattr(word, "audio"):
                 word_details["pronunciation_audio_url"] = word.audio.pronunciation_audio_url
@@ -557,6 +563,18 @@ class WordsCrud(APIView):
             "concept",
             word_obj.concept
         )
+        if "is_valid" in request.data:
+            word_obj.is_valid = request.data.get("is_valid")
+            word_obj.validation_reason = request.data.get(
+                "validation_reason",
+                word_obj.validation_reason
+            )
+            word_obj.validation_source = Words.ValidationSource.MANUAL
+            word_obj.validated_at = timezone.now()
+            word_obj.validated_by = request.user
+
+        word_obj.updated_by = request.user
+
         word_obj.save()
         return CustomResponse().successResponse(
             data={},
@@ -568,7 +586,8 @@ class WordsCrud(APIView):
         )
         word_obj = Words.objects.filter(
             id=word_id,
-            is_active=True
+            is_active=True,
+            is_valid = False
         ).first()
         if not word_obj:
             return CustomResponse().errorResponse(

@@ -22,7 +22,8 @@ def get_practice_words(kid,no_of_questions=10):
         Words.objects.filter(
             grade=kid.grade,
             is_active=True,
-            voice_status='GENERATED'
+            voice_status='GENERATED',
+            is_valid =True
         ).select_related(
             "audio"
         ).exclude(
