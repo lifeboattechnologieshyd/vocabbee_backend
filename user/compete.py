@@ -537,7 +537,7 @@ class TournamentHistoryAPIView(APIView):
 class TournamentAnswersAPIView(APIView):
 
     def get(self, request):
-        participant_id = request.get("participant_id")
+        participant_id = request.GET.get("participant_id")
         participant = TournamentParticipants.objects.filter(
             id=participant_id
         ).first()
