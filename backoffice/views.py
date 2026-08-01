@@ -557,6 +557,18 @@ class WordsCrud(APIView):
             "concept",
             word_obj.concept
         )
+        if "is_valid" in request.data:
+            word_obj.is_valid = request.data.get("is_valid")
+            word_obj.validation_reason = request.data.get(
+                "validation_reason",
+                word_obj.validation_reason
+            )
+            word_obj.validation_source = Words.ValidationSource.MANUAL
+            word_obj.validated_at = timezone.now()
+            word_obj.validated_by = request.user
+
+        word_obj.updated_by = request.user
+
         word_obj.save()
         return CustomResponse().successResponse(
             data={},
@@ -568,7 +580,8 @@ class WordsCrud(APIView):
         )
         word_obj = Words.objects.filter(
             id=word_id,
-            is_active=True
+            is_active=True,
+            is_valid = False
         ).first()
         if not word_obj:
             return CustomResponse().errorResponse(
