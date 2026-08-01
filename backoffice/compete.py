@@ -498,7 +498,7 @@ class TournyReminders:
             flat=True
         )
         tokens = set(tokens)
-        pushinfo = send_bulk_push_notification(tokens,
+        pushinfo = send_bulk_push_notification(list(tokens),
                                               "🏆 New Tournament Published",
                                               f"{tournament.title} is now open for registration.",
                                               {
