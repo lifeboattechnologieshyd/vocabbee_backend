@@ -1,7 +1,9 @@
 from django.urls import path
 
+from db.models.compete import TournamentAnswers
 from .compete import TournamentResultAPIView, TournamentLeaderboardAPIView, TournamentSubmitAnswerAPIView, \
-    TournamentStartAPIView, TournamentJoinAPIView, TournamentListAPIView, TournamentHistoryAPIView
+    TournamentStartAPIView, TournamentJoinAPIView, TournamentListAPIView, TournamentHistoryAPIView, \
+    TournamentAnswersAPIView
 from .dailychallenges import DailyChallengesAPIView, DailyChallengeWordsAPIView, DailyChallengeSubmitAPIView, \
     DailyChallengeResultAPIView, DailyChallengeStatsAPIView, DailyChallengeHistoryAPIView
 from .practice import StartPractice, SubmitPracticeAnswer, SkipPracticeQuestion, EndPractice, PracticeStats, \
@@ -65,5 +67,7 @@ urlpatterns = [
     path("tournaments/result/<uuid:tournament_id>", TournamentResultAPIView.as_view()),
     path("tournaments/leaderboard/<uuid:tournament_id>", TournamentLeaderboardAPIView.as_view()),
     path("tournaments/history", TournamentHistoryAPIView.as_view()),
+    path("tournaments/answers", TournamentAnswersAPIView.as_view()),
+
 
 ]
