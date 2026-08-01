@@ -435,7 +435,9 @@ class WordsCrud(APIView):
         start = (page - 1) * page_size
         end = start + page_size
         words = words.order_by(
-            "word"
+            "is_valid",
+            "word",
+
         )[start:end]
         response = []
         for word in words:
@@ -454,7 +456,11 @@ class WordsCrud(APIView):
                 "grade": {
                     "id": str(word.grade.id),
                     "name": word.grade.name
-                }
+                },
+                "is_valid": word.is_valid,
+                "validation_reason": word.validation_reason,
+                "validation_source": word.validation_source,
+                "validated_at": word.validated_at,
             }
             if hasattr(word, "audio"):
                 word_details["pronunciation_audio_url"] = word.audio.pronunciation_audio_url
