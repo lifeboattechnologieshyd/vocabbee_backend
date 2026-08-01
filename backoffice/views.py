@@ -513,6 +513,7 @@ class WordsCrud(APIView):
         )
 
         duplicate = Words.objects.filter(
+            grade=grade,
             word__iexact=new_word
         ).exclude(
             id=word_obj.id
@@ -573,7 +574,7 @@ class WordsCrud(APIView):
             word_obj.validated_at = timezone.now()
             word_obj.validated_by = request.user
 
-        word_obj.updated_by = request.user
+        word_obj.updated_by = str(request.user)
 
         word_obj.save()
         return CustomResponse().successResponse(
