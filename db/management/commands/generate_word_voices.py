@@ -53,7 +53,8 @@ class Command(BaseCommand):
         pending_words = (
             Words.objects.filter(
                 is_active=True,
-                voice_status="PENDING"
+                voice_status="PENDING",
+                is_valid = True
             )[:10000]
         )
 
