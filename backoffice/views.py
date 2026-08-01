@@ -513,6 +513,7 @@ class WordsCrud(APIView):
         )
 
         duplicate = Words.objects.filter(
+            grade=grade,
             word__iexact=new_word
         ).exclude(
             id=word_obj.id
