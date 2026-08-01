@@ -501,6 +501,8 @@ class TournamentHistoryAPIView(APIView):
         for participant in page_obj:
 
             tournament = participant.tournament
+            if tournament.status == 'UPCOMING':
+                continue
 
             results.append({
                 "tournament_id": str(tournament.id),
