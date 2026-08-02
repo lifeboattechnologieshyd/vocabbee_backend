@@ -153,7 +153,9 @@ class TournamentCreateAPIView(APIView):
                 "eligible_grades": tournament.grade_count,
                 "participants": tournament.participant_count,
                 "start_at": tournament.start_at,
-                "end_at": tournament.end_at
+                "end_at": tournament.end_at,
+                "max_participants": tournament.max_participants,
+                "duration": tournament.duration_minutes,
             })
 
         return CustomResponse().successResponse(
