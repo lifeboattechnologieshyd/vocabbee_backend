@@ -109,7 +109,6 @@ class DailyChallengeWordsAPIView(APIView):
                 challenge_date=challenge_date,
                 grade=kid.grade,
                 is_active=True,
-                is_valid = True
             )
             .exclude(
                 word_id__in=attempted_word_ids
