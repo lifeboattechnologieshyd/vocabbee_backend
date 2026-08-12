@@ -24,37 +24,30 @@ class TournamentCreateAPIView(APIView):
         max_participants = data.get("max_participants")
         entry_fee = data.get("entry_fee", 0)
         prize_pool = data.get("prize_pool", 0)
-
         if not title:
             return CustomResponse().errorResponse(
                 description="Tournament title is required."
             )
-
         if not tournament_type:
             return CustomResponse().errorResponse(
                 description="Tournament type is required."
             )
-
         if not total_questions:
             return CustomResponse().errorResponse(
                 description="Total questions is required."
             )
-
         if not duration_minutes:
             return CustomResponse().errorResponse(
                 description="Duration is required."
             )
-
         if not start_at:
             return CustomResponse().errorResponse(
                 description="Start date & time is required."
             )
-
         if not end_at:
             return CustomResponse().errorResponse(
                 description="End date & time is required."
             )
-
         # if Tournaments.objects.filter(
         #     title__iexact=title.strip()
         # ).exists():
@@ -63,7 +56,6 @@ class TournamentCreateAPIView(APIView):
         #     )
 
         subject = None
-
         # if subject_id:
         #
         #     subject = Subjects.objects.filter(
@@ -74,7 +66,6 @@ class TournamentCreateAPIView(APIView):
         #         return CustomResponse().errorResponse(
         #             description="Invalid subject."
         #         )
-
         tournament = Tournaments.objects.create(
             title=title.strip(),
             description=description,
@@ -89,14 +80,12 @@ class TournamentCreateAPIView(APIView):
             prize_pool=prize_pool,
             status="DRAFT"
         )
-
         return CustomResponse().successResponse(
             data={
                 "id": str(tournament.id)
             },
             description="Tournament created successfully."
         )
-
     def get(self, request):
 
         page = int(request.GET.get("page", 1))
@@ -154,6 +143,7 @@ class TournamentCreateAPIView(APIView):
                 "participants": tournament.participant_count,
                 "start_at": tournament.start_at,
                 "end_at": tournament.end_at,
+                "prize_pool": tournament.prize_pool,
                 "max_participants": tournament.max_participants,
                 "duration": tournament.duration_minutes,
             })

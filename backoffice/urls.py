@@ -9,6 +9,7 @@ from .views import SendOtp, VerifyOTP, GradesList, WordsCrud, UploadWords, MakeA
     SubjectCrud, SubjectDeleteAPIView
 
 urlpatterns = [
+
     path("send-otp", SendOtp.as_view()),
     path("verify-otp", VerifyOTP.as_view()),
     path("make-admin", MakeAdmin.as_view()),
@@ -16,11 +17,8 @@ urlpatterns = [
     path("grades/update", GradesList.as_view()), # PUT
     path("grades/delete", GradesList.as_view()),
 
-
     path("subject", SubjectCrud.as_view()),
     path("subject/<uuid:subject_id>", SubjectDeleteAPIView.as_view()),
-
-
     # DELETE
     path("words", WordsCrud.as_view()), #crud
     path("words/audio", WordsAudio.as_view()), #get audio from sf
@@ -47,5 +45,4 @@ urlpatterns = [
     path("tournaments/assign-words/<uuid:tournament_id>", TournamentAssignQuestionsAPIView.as_view()),
     path("tournaments/cancel/<uuid:tournament_id>", TournamentCancelAPIView.as_view()),
     path("tournaments/validate/<uuid:tournament_id>", TournamentPublishAPIView.as_view()),
-
 ]
