@@ -493,6 +493,61 @@ class Words(AuditModel):
         null=True,
         blank=True,
     )
+    root_word = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
+
+    phonetic_script = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="Phonetic transcription (IPA)."
+    )
+
+    syllabified_stressed_transcript = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
+
+    origin_word = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
+
+    origin_word_meaning = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    antonym = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    synonym = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    points = models.PositiveIntegerField(
+        default=0
+    )
+
+    word_status = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
+
+    domain = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
 
 
     class Meta:
