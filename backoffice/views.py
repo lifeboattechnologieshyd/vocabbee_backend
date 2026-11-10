@@ -735,6 +735,7 @@ class WordsCrud(APIView):
 
 
 
+
 class UploadWords(APIView):
 
     permission_classes = [AllowAny]
@@ -755,24 +756,21 @@ class UploadWords(APIView):
             )
 
         try:
-
             df = pd.read_excel(file)
             df.columns = df.columns.str.strip()
 
             required_columns = [
                 "Grade",
                 "Word",
-                "Difficulty"
+                "Difficulty Level"
             ]
 
             missing_columns = [
-                column
-                for column in required_columns
+                column for column in required_columns
                 if column not in df.columns
             ]
 
             if missing_columns:
-
                 return CustomResponse().errorResponse(
                     data={},
                     description=(
@@ -783,27 +781,18 @@ class UploadWords(APIView):
 
             grades_map = {
                 grade.name.strip().lower(): grade
-                for grade in Grades.objects.filter(
-                    is_active=True
-                )
+                for grade in Grades.objects.filter(is_active=True)
             }
 
             existing_words = {
-                (
-                    word.strip().lower(),
-                    str(grade_id)
-                )
+                (word.strip().lower(), str(grade_id))
                 for word, grade_id in Words.objects.filter(
                     is_active=True
-                ).values_list(
-                    "word",
-                    "grade_id"
-                )
+                ).values_list("word", "grade_id")
                 if word
             }
 
             seen_in_file = set()
-
             words_to_create = []
 
             created_count = 0
@@ -815,186 +804,183 @@ class UploadWords(APIView):
             invalid_grades = []
             missing_words = []
 
+            def get_value(row, column, default=None):
+                value = row.get(column, default)
+
+                if pd.isna(value):
+                    return default
+
+                if isinstance(value, str):
+                    value = value.strip()
+
+                return value if value != "" else default
+
             for index, row in df.iterrows():
 
                 excel_row = index + 2
 
-                grade_value = row.get("Grade")
-                word_value = row.get("Word")
+                grade_value = get_value(row, "Grade")
+                word_value = get_value(row, "Word")
 
-                if pd.isna(grade_value):
+                if grade_value is None:
 
                     invalid_grade_count += 1
-
                     invalid_grades.append({
                         "row": excel_row,
                         "grade": None
                     })
-
                     continue
 
-                if pd.isna(word_value):
+                if word_value is None:
 
                     missing_word_count += 1
-
                     missing_words.append({
                         "row": excel_row
                     })
-
                     continue
 
-                grade_name = str(
-                    grade_value
-                ).strip()
+                grade_name = str(grade_value).strip()
+                word = str(word_value).strip().lower()
 
-                word = str(
-                    word_value
-                ).strip().lower()
-
-                if not word:
-
-                    missing_word_count += 1
-
-                    missing_words.append({
-                        "row": excel_row
-                    })
-
-                    continue
-
-                grade = grades_map.get(
-                    grade_name.lower()
-                )
+                grade = grades_map.get(grade_name.lower())
 
                 if not grade:
 
                     invalid_grade_count += 1
-
                     invalid_grades.append({
                         "row": excel_row,
                         "grade": grade_name
                     })
-
                     continue
 
-                duplicate_key = (
-                    word,
-                    str(grade.id)
-                )
+                duplicate_key = (word, str(grade.id))
 
                 # Duplicate in uploaded Excel
                 if duplicate_key in seen_in_file:
 
                     duplicate_count += 1
-
                     duplicate_words.append({
                         "row": excel_row,
                         "word": word,
                         "grade": grade.name,
                         "reason": "Duplicate in uploaded file"
                     })
-
                     continue
 
-                seen_in_file.add(
-                    duplicate_key
-                )
+                seen_in_file.add(duplicate_key)
 
-                # Duplicate already exists in DB
+                # Duplicate already exists in database
                 if duplicate_key in existing_words:
 
                     duplicate_count += 1
-
                     duplicate_words.append({
                         "row": excel_row,
                         "word": word,
                         "grade": grade.name,
                         "reason": "Already exists"
                     })
-
                     continue
 
-                existing_words.add(
-                    duplicate_key
-                )
+                existing_words.add(duplicate_key)
 
-                difficulty = row.get(
-                    "Difficulty",
+                difficulty = get_value(
+                    row,
+                    "Difficulty Level",
                     1
                 )
 
-                if pd.isna(difficulty):
-                    difficulty = 1
+                try:
+                    difficulty = int(float(difficulty))
+                    if difficulty < 1 or difficulty > 5:
+                        raise ValueError
+                except (ValueError, TypeError):
+                    return CustomResponse().errorResponse(
+                        data={
+                            "row": excel_row,
+                            "difficulty": difficulty
+                        },
+                        description=(
+                            "Difficulty Level must be between 1 and 5."
+                        )
+                    )
 
-                subject = row.get(
-                    "Subject",
-                    "English"
-                )
+                points = get_value(row, "Points", 0)
 
-                if pd.isna(subject):
-                    subject = "English"
+                try:
+                    points = int(float(points))
+                    if points < 0:
+                        raise ValueError
+                except (ValueError, TypeError):
+                    return CustomResponse().errorResponse(
+                        data={
+                            "row": excel_row,
+                            "points": points
+                        },
+                        description="Points must be a non-negative number."
+                    )
 
-                concept = row.get(
-                    "Concept"
-                )
-
-                if pd.isna(concept):
-                    concept = None
-
-                hint = row.get(
-                    "Hint"
-                )
-
-                if pd.isna(hint):
-                    hint = None
-
-                meaning = row.get(
-                    "Meaning"
-                )
-
-                if pd.isna(meaning):
-                    meaning = None
-
-                part_of_speech = row.get(
-                    "Part Of Speech"
-                )
-
-                if pd.isna(part_of_speech):
-                    part_of_speech = None
-
-                origin = row.get(
-                    "Origin"
-                )
-
-                if pd.isna(origin):
-                    origin = None
-
-                usage = row.get(
-                    "Usage"
-                )
-
-                if pd.isna(usage):
-                    usage = None
+                subject = get_value(row, "subject", "English")
 
                 words_to_create.append(
                     Words(
                         grade=grade,
                         word=word,
+                        meaning=get_value(
+                            row, "Definition/ meaning"
+                        ),
+                        root_word=get_value(
+                            row, "Root word"
+                        ),
+                        phonetic_script=get_value(
+                            row, "Phonetic script"
+                        ),
+                        syllabified_stressed_transcript=get_value(
+                            row, "Syllabified Stressed Transcript"
+                        ),
+                        concept=get_value(
+                            row, "Concept name"
+                        ),
+                        origin=get_value(
+                            row, "Origin"
+                        ),
+                        origin_word=get_value(
+                            row, "Origin Word (Exact Word)"
+                        ),
+                        origin_word_meaning=get_value(
+                            row, "Origin Word Meaning"
+                        ),
+                        usage=get_value(
+                            row, "Usage"
+                        ),
+                        hint=get_value(
+                            row, "Hint"
+                        ),
+                        antonym=get_value(
+                            row, "Antonym"
+                        ),
+                        synonym=get_value(
+                            row, "Synonym"
+                        ),
+                        part_of_speech=get_value(
+                            row, "Parts Of Speech"
+                        ),
                         difficulty=difficulty,
-                        subject=subject,
-                        concept=concept,
-                        hint=hint,
-                        meaning=meaning,
-                        part_of_speech=part_of_speech,
-                        origin=origin,
-                        usage=usage
+                        points=points,
+                        word_status=get_value(
+                            row, "Status"
+                        ),
+                        domain=get_value(
+                            row, "Domain"
+                        ),
+                        subject=subject
                     )
                 )
 
                 created_count += 1
+
             with transaction.atomic():
 
                 if words_to_create:
-
                     Words.objects.bulk_create(
                         words_to_create,
                         batch_size=1000
@@ -1032,6 +1018,9 @@ class UploadWords(APIView):
                 data={},
                 description=str(e)
             )
+
+
+
 
 class DashboardAPIView(APIView):
 
