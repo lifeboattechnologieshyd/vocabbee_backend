@@ -323,68 +323,83 @@ class WordsAudio(APIView):
 
 
 
+
 class WordsCrud(APIView):
 
     def post(self, request):
+
         if not request.user.is_admin:
             return CustomResponse().errorResponse(
                 data={},
                 description="Unauthorized"
             )
+
         grade_id = request.data.get("grade_id")
         word = request.data.get("word")
-        subject = request.data.get("subject")
-        concept = request.data.get("concept")
-        usage = request.data.get("usage")
-        hint = request.data.get("hint")
+
         if not grade_id:
             return CustomResponse().errorResponse(
                 data={},
                 description="Grade is required"
             )
-        if not word:
+
+        if not word or not word.strip():
             return CustomResponse().errorResponse(
                 data={},
                 description="Word is required"
             )
+
         grade = Grades.objects.filter(
             id=grade_id,
             is_active=True
         ).first()
+
         if not grade:
             return CustomResponse().errorResponse(
                 data={},
                 description="Invalid grade"
             )
+
+        word = word.strip()
+
         if Words.objects.filter(
-                word__iexact=word.strip()
+            grade=grade,
+            word__iexact=word
         ).exists():
             return CustomResponse().errorResponse(
                 data={},
-                description="Word already exists"
+                description="Word already exists for this grade"
             )
+
         word_obj = Words.objects.create(
             grade=grade,
-            word=word.strip(),
-            difficulty=request.data.get(
-                "difficulty",
-                1
+            word=word,
+            subject=request.data.get("subject", "English"),
+            concept=request.data.get("concept"),
+            hint=request.data.get("hint"),
+            meaning=request.data.get("meaning"),
+            difficulty=request.data.get("difficulty", 1),
+            part_of_speech=request.data.get("part_of_speech"),
+            origin=request.data.get("origin"),
+            usage=request.data.get("usage"),
+
+            # New fields
+            root_word=request.data.get("root_word"),
+            phonetic_script=request.data.get("phonetic_script"),
+            syllabified_stressed_transcript=request.data.get(
+                "syllabified_stressed_transcript"
             ),
-            subject=subject,
-            concept=concept,
-            hint=hint,
-            meaning=request.data.get(
-                "meaning"
-            ),
-            part_of_speech=request.data.get(
-                "part_of_speech"
-            ),
-            origin=request.data.get(
-                "origin"
-            ),
-            usage=usage
+            origin_word=request.data.get("origin_word"),
+            origin_word_meaning=request.data.get("origin_word_meaning"),
+            antonym=request.data.get("antonym"),
+            synonym=request.data.get("synonym"),
+            points=request.data.get("points", 0),
+            word_status=request.data.get("word_status"),
+            domain=request.data.get("domain"),
         )
+
         resp = getWordAudio(word_obj)
+
         return CustomResponse().successResponse(
             data={
                 "word_id": str(word_obj.id),
@@ -401,15 +416,17 @@ class WordsCrud(APIView):
                 data={},
                 description="Unauthorized"
             )
+
         page = int(request.GET.get("page", 1))
         page_size = int(request.GET.get("page_size", 20))
+
         search = request.GET.get("search")
         grade_id = request.GET.get("grade_id")
         difficulty = request.GET.get("difficulty")
 
         words = Words.objects.filter(
             is_active=True,
-            voice_status='GENERATED',
+            voice_status="GENERATED"
         ).select_related(
             "grade",
             "audio"
@@ -428,19 +445,22 @@ class WordsCrud(APIView):
         if search:
             words = words.filter(
                 Q(word__icontains=search)
-                # |
-                # Q(meaning__icontains=search)
             )
+
         total_count = words.count()
+
         start = (page - 1) * page_size
         end = start + page_size
+
         words = words.order_by(
             "is_valid",
-            "word",
-
+            "word"
         )[start:end]
+
         response = []
+
         for word in words:
+
             word_details = {
                 "word_id": str(word.id),
                 "word": word.word,
@@ -452,22 +472,51 @@ class WordsCrud(APIView):
                 "part_of_speech": word.part_of_speech,
                 "origin": word.origin,
                 "usage": word.usage,
-                "status": word.voice_status,
-                "grade": {
-                    "id": str(word.grade.id),
-                    "name": word.grade.name
-                },
+
+                # New fields
+                "root_word": word.root_word,
+                "phonetic_script": word.phonetic_script,
+                "syllabified_stressed_transcript": (
+                    word.syllabified_stressed_transcript
+                ),
+                "origin_word": word.origin_word,
+                "origin_word_meaning": word.origin_word_meaning,
+                "antonym": word.antonym,
+                "synonym": word.synonym,
+                "points": word.points,
+                "word_status": word.word_status,
+                "domain": word.domain,
+
+                # Existing fields
+                "voice_status": word.voice_status,
                 "is_valid": word.is_valid,
                 "validation_reason": word.validation_reason,
                 "validation_source": word.validation_source,
                 "validated_at": word.validated_at,
+
+                "grade": {
+                    "id": str(word.grade.id),
+                    "name": word.grade.name
+                }
             }
+
             if hasattr(word, "audio"):
-                word_details["pronunciation_audio_url"] = word.audio.pronunciation_audio_url
-                word_details["meaning_audio_url"] = word.audio.meaning_audio_url
-                word_details["part_of_speech_audio_url"] = word.audio.part_of_speech_audio_url
-                word_details["origin_audio_url"] = word.audio.origin_audio_url
-                word_details["usage_audio_url"] = word.audio.usage_audio_url
+                word_details["pronunciation_audio_url"] = (
+                    word.audio.pronunciation_audio_url
+                )
+                word_details["meaning_audio_url"] = (
+                    word.audio.meaning_audio_url
+                )
+                word_details["part_of_speech_audio_url"] = (
+                    word.audio.part_of_speech_audio_url
+                )
+                word_details["origin_audio_url"] = (
+                    word.audio.origin_audio_url
+                )
+                word_details["usage_audio_url"] = (
+                    word.audio.usage_audio_url
+                )
+
             response.append(word_details)
 
         return CustomResponse().successResponse(
@@ -478,9 +527,13 @@ class WordsCrud(APIView):
 
     def put(self, request):
 
-        word_id = request.data.get(
-            "word_id"
-        )
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+
+        word_id = request.data.get("word_id")
 
         word_obj = Words.objects.filter(
             id=word_id,
@@ -494,7 +547,8 @@ class WordsCrud(APIView):
             )
 
         grade_id = request.data.get(
-            "grade_id"
+            "grade_id",
+            word_obj.grade_id
         )
 
         grade = Grades.objects.filter(
@@ -509,12 +563,22 @@ class WordsCrud(APIView):
             )
 
         new_word = request.data.get(
-            "word"
+            "word",
+            word_obj.word
         )
+
+        if not new_word or not new_word.strip():
+            return CustomResponse().errorResponse(
+                data={},
+                description="Word is required"
+            )
+
+        new_word = new_word.strip()
 
         duplicate = Words.objects.filter(
             grade=grade,
-            word__iexact=new_word
+            word__iexact=new_word,
+            is_active=True
         ).exclude(
             id=word_obj.id
         ).exists()
@@ -522,12 +586,13 @@ class WordsCrud(APIView):
         if duplicate:
             return CustomResponse().errorResponse(
                 data={},
-                description="Word already exists"
+                description="Word already exists for this grade"
             )
 
-        word_obj.word = new_word.strip()
+        word_obj.word = new_word
         word_obj.grade = grade
 
+        # Existing fields
         word_obj.difficulty = request.data.get(
             "difficulty",
             word_obj.difficulty
@@ -542,6 +607,7 @@ class WordsCrud(APIView):
             "part_of_speech",
             word_obj.part_of_speech
         )
+
         word_obj.subject = request.data.get(
             "subject",
             word_obj.subject
@@ -556,20 +622,78 @@ class WordsCrud(APIView):
             "usage",
             word_obj.usage
         )
-        word_obj.usage = request.data.get(
+
+        word_obj.hint = request.data.get(
             "hint",
             word_obj.hint
         )
-        word_obj.usage = request.data.get(
+
+        word_obj.concept = request.data.get(
             "concept",
             word_obj.concept
         )
+
+        # New fields
+        word_obj.root_word = request.data.get(
+            "root_word",
+            word_obj.root_word
+        )
+
+        word_obj.phonetic_script = request.data.get(
+            "phonetic_script",
+            word_obj.phonetic_script
+        )
+
+        word_obj.syllabified_stressed_transcript = request.data.get(
+            "syllabified_stressed_transcript",
+            word_obj.syllabified_stressed_transcript
+        )
+
+        word_obj.origin_word = request.data.get(
+            "origin_word",
+            word_obj.origin_word
+        )
+
+        word_obj.origin_word_meaning = request.data.get(
+            "origin_word_meaning",
+            word_obj.origin_word_meaning
+        )
+
+        word_obj.antonym = request.data.get(
+            "antonym",
+            word_obj.antonym
+        )
+
+        word_obj.synonym = request.data.get(
+            "synonym",
+            word_obj.synonym
+        )
+
+        word_obj.points = request.data.get(
+            "points",
+            word_obj.points
+        )
+
+        word_obj.word_status = request.data.get(
+            "word_status",
+            word_obj.word_status
+        )
+
+        word_obj.domain = request.data.get(
+            "domain",
+            word_obj.domain
+        )
+
+        # Manual validation
         if "is_valid" in request.data:
+
             word_obj.is_valid = request.data.get("is_valid")
+
             word_obj.validation_reason = request.data.get(
                 "validation_reason",
                 word_obj.validation_reason
             )
+
             word_obj.validation_source = Words.ValidationSource.MANUAL
             word_obj.validated_at = timezone.now()
             word_obj.validated_by = request.user
@@ -577,30 +701,45 @@ class WordsCrud(APIView):
         word_obj.updated_by = str(request.user)
 
         word_obj.save()
+
         return CustomResponse().successResponse(
-            data={},
+            data={
+                "word_id": str(word_obj.id)
+            },
             description="Word updated successfully"
         )
+
     def delete(self, request):
-        word_id = request.data.get(
-            "word_id"
-        )
+
+        if not request.user.is_admin:
+            return CustomResponse().errorResponse(
+                data={},
+                description="Unauthorized"
+            )
+
+        word_id = request.data.get("word_id")
+
         word_obj = Words.objects.filter(
             id=word_id,
             is_active=True,
-            is_valid = False
+            is_valid=False
         ).first()
+
         if not word_obj:
             return CustomResponse().errorResponse(
                 data={},
                 description="Invalid word"
             )
+
         word_obj.is_active = False
+        word_obj.updated_by = str(request.user)
         word_obj.save()
+
         return CustomResponse().successResponse(
             data={},
             description="Word deleted successfully"
         )
+
 
 # class UploadWords(APIView):
 #
