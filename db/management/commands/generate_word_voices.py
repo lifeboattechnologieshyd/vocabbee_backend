@@ -25,13 +25,11 @@ class Command(BaseCommand):
 
         logger.info("generate_word_voices command started")
 
+        # Initialize Google TTS client
         try:
             tts_client = texttospeech.TextToSpeechClient()
 
-            print(
-                "TTS Client Initialized Successfully",
-                flush=True
-            )
+            print("TTS Client Initialized Successfully", flush=True)
 
         except Exception as e:
 
@@ -43,11 +41,12 @@ class Command(BaseCommand):
             print(f"TTS Initialization Failed: {e}", flush=True)
             return
 
+        # Fetch pending words
         pending_words = Words.objects.filter(
             is_active=True,
             voice_status="PENDING",
             # is_valid=True
-        )[:10000]
+        ).order_by("id")[:10000]
 
         total_count = pending_words.count()
 
@@ -60,6 +59,7 @@ class Command(BaseCommand):
         successful = []
         unsuccessful = []
 
+        # Generate TTS audio and upload to S3
         def generate_tts(text, path):
 
             if not text or not str(text).strip():
@@ -102,10 +102,12 @@ class Command(BaseCommand):
                     flush=True
                 )
 
-                return save_to_s3(
+                audio_url = save_to_s3(
                     path=path,
                     file_obj=audio_file
                 )
+
+                return audio_url
 
             except Exception as e:
 
@@ -121,6 +123,7 @@ class Command(BaseCommand):
 
                 return None
 
+        # Process each pending word
         for index, word in enumerate(pending_words, start=1):
 
             print("=" * 80, flush=True)
@@ -141,7 +144,7 @@ class Command(BaseCommand):
                     flush=True
                 )
 
-                # Pronunciation
+                # 1. Pronunciation
                 if word.word and not audio_obj.pronunciation_audio_url:
 
                     print("Generating Pronunciation...", flush=True)
@@ -151,7 +154,7 @@ class Command(BaseCommand):
                         "words/pronunciation"
                     )
 
-                # Meaning
+                # 2. Meaning
                 if word.meaning and not audio_obj.meaning_audio_url:
 
                     print("Generating Meaning...", flush=True)
@@ -161,7 +164,7 @@ class Command(BaseCommand):
                         "words/meaning"
                     )
 
-                # Usage
+                # 3. Usage
                 if word.usage and not audio_obj.usage_audio_url:
 
                     print("Generating Usage...", flush=True)
@@ -171,7 +174,7 @@ class Command(BaseCommand):
                         "words/usage"
                     )
 
-                # Origin
+                # 4. Origin
                 if word.origin and not audio_obj.origin_audio_url:
 
                     print("Generating Origin...", flush=True)
@@ -181,7 +184,7 @@ class Command(BaseCommand):
                         "words/origin"
                     )
 
-                # Part of Speech
+                # 5. Part of Speech
                 if word.part_of_speech and not audio_obj.part_of_speech_audio_url:
 
                     print("Generating Part Of Speech...", flush=True)
@@ -191,7 +194,7 @@ class Command(BaseCommand):
                         "words/part_of_speech"
                     )
 
-                # NEW: Phonetic Script
+                # 6. Phonetic Script
                 if word.phonetic_script and not audio_obj.phonetic_script_audio_url:
 
                     print("Generating Phonetic Script...", flush=True)
@@ -201,7 +204,7 @@ class Command(BaseCommand):
                         "words/phonetic_script"
                     )
 
-                # NEW: Syllabified Stressed Transcript
+                # 7. Syllabified Stressed Transcript
                 if (
                     word.syllabified_stressed_transcript
                     and not audio_obj.syllabified_stressed_transcript_audio_url
@@ -219,34 +222,59 @@ class Command(BaseCommand):
                         )
                     )
 
+                # Save audio URLs
                 audio_obj.save()
 
-                # Check whether all applicable audio files are generated.
+                # Check all applicable audio files
                 audio_checks = [
-                    (word.word, audio_obj.pronunciation_audio_url),
-                    (word.meaning, audio_obj.meaning_audio_url),
-                    (word.usage, audio_obj.usage_audio_url),
-                    (word.origin, audio_obj.origin_audio_url),
-                    (word.part_of_speech, audio_obj.part_of_speech_audio_url),
-                    (word.phonetic_script, audio_obj.phonetic_script_audio_url),
                     (
+                        "pronunciation",
+                        word.word,
+                        audio_obj.pronunciation_audio_url
+                    ),
+                    (
+                        "meaning",
+                        word.meaning,
+                        audio_obj.meaning_audio_url
+                    ),
+                    (
+                        "usage",
+                        word.usage,
+                        audio_obj.usage_audio_url
+                    ),
+                    (
+                        "origin",
+                        word.origin,
+                        audio_obj.origin_audio_url
+                    ),
+                    (
+                        "part_of_speech",
+                        word.part_of_speech,
+                        audio_obj.part_of_speech_audio_url
+                    ),
+                    (
+                        "phonetic_script",
+                        word.phonetic_script,
+                        audio_obj.phonetic_script_audio_url
+                    ),
+                    (
+                        "syllabified_stressed_transcript",
                         word.syllabified_stressed_transcript,
                         audio_obj.syllabified_stressed_transcript_audio_url
                     ),
                 ]
 
-                all_audio_generated = all(
-                    not source_text or audio_url
-                    for source_text, audio_url in audio_checks
-                )
+                # Find missing audio files for populated source fields
+                missing_audio = [
+                    field_name
+                    for field_name, source_text, audio_url in audio_checks
+                    if source_text and not audio_url
+                ]
 
-                if all_audio_generated:
+                # Update voice status
+                if not missing_audio:
 
                     word.voice_status = "GENERATED"
-
-                    word.save(
-                        update_fields=["voice_status"]
-                    )
 
                     successful.append(str(word.id))
 
@@ -257,14 +285,41 @@ class Command(BaseCommand):
 
                 else:
 
+                    word.voice_status = "PENDING"
+
                     unsuccessful.append(str(word.id))
 
                     print(
-                        f"{word.word} -> Some audio files are missing",
+                        f"{word.word} -> Missing audio: "
+                        f"{', '.join(missing_audio)}",
                         flush=True
                     )
 
+                word.save(update_fields=["voice_status"])
+
+                # Print audio generation status
+                audio_status = {
+                    "pronunciation": bool(audio_obj.pronunciation_audio_url),
+                    "meaning": bool(audio_obj.meaning_audio_url),
+                    "usage": bool(audio_obj.usage_audio_url),
+                    "origin": bool(audio_obj.origin_audio_url),
+                    "part_of_speech": bool(audio_obj.part_of_speech_audio_url),
+                    "phonetic_script": bool(audio_obj.phonetic_script_audio_url),
+                    "syllabified_stressed_transcript": bool(
+                        audio_obj.syllabified_stressed_transcript_audio_url
+                    ),
+                }
+
+                print(
+                    "Audio Generation Status:",
+                    audio_status,
+                    flush=True
+                )
+
             except Exception as e:
+
+                word.voice_status = "PENDING"
+                word.save(update_fields=["voice_status"])
 
                 unsuccessful.append(str(word.id))
 
@@ -279,6 +334,7 @@ class Command(BaseCommand):
                     flush=True
                 )
 
+        # Final summary
         print("=" * 80, flush=True)
 
         print(f"Success: {len(successful)}", flush=True)
@@ -290,3 +346,4 @@ class Command(BaseCommand):
                 f"Failed={len(unsuccessful)}"
             )
         )
+
