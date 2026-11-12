@@ -622,6 +622,17 @@ class WordAudios(AuditModel):
         null=True,
         blank=True
     )
+    phonetic_script_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+    )
+    syllabified_stressed_transcript_audio_url = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True
+
+    )
     class Meta:
         db_table = "word_audios"
 
