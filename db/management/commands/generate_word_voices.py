@@ -46,7 +46,7 @@ class Command(BaseCommand):
             is_active=True,
             voice_status="PENDING",
             # is_valid=True
-        ).order_by("id")[:10000]
+        ).order_by("id")[:1000]
 
         total_count = pending_words.count()
 

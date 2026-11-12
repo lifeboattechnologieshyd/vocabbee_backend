@@ -274,7 +274,7 @@ DEBUG = True
 
 CRONJOBS = [
     # Every day at 12:05 AM generate_word_voices
-    # ("5 0 * * *","django.core.management.call_command",["generate_word_voices"],),
+    ("0 */4 * * *","django.core.management.call_command",["generate_word_voices"],),
 
    # Every day at 12:05 AM schedule_daily_words
     ("5 0 * * *","django.core.management.call_command",["schedule_daily_words"],),
