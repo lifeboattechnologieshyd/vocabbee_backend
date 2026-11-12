@@ -520,7 +520,7 @@ class WordsCrud(APIView):
                     word.audio.syllabified_stressed_transcript_audio_url
                 )
                 word_details["phonetic_script_audio_url"] = (
-                    word.audio.phonetic_script.audio_url
+                    word.audio.phonetic_script_audio_url
                 )
 
             response.append(word_details)
