@@ -516,6 +516,12 @@ class WordsCrud(APIView):
                 word_details["usage_audio_url"] = (
                     word.audio.usage_audio_url
                 )
+                word_details["syllabified_audio_url"] = (
+                    word.audio.syllabified_audio_url
+                )
+                word_details["phonetic_script_audio_url"] = (
+                    word.phonetic_script.audio_url
+                )
 
             response.append(word_details)
 
