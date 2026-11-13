@@ -426,7 +426,7 @@ class WordsCrud(APIView):
 
         words = Words.objects.filter(
             is_active=True,
-            # voice_status="GENERATED"
+            voice_status="GENERATED"
         ).select_related(
             "grade",
             "audio"
