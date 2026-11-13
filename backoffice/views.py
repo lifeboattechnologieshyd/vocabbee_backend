@@ -880,7 +880,6 @@ class WordsCrud(APIView):
 
 
 
-
 class UploadWords(APIView):
 
     permission_classes = [AllowAny]
@@ -904,6 +903,7 @@ class UploadWords(APIView):
             df = pd.read_excel(file)
             df.columns = df.columns.str.strip()
 
+            # Required Excel columns
             required_columns = [
                 "Grade",
                 "Word",
@@ -917,18 +917,76 @@ class UploadWords(APIView):
 
             if missing_columns:
                 return CustomResponse().errorResponse(
-                    data={},
+                    data={
+                        "missing_columns": missing_columns
+                    },
                     description=(
                         f"Missing required columns: "
                         f"{', '.join(missing_columns)}"
                     )
                 )
 
+            # Helper to get Excel values
+            def get_value(row, *columns, default=None):
+
+                for column in columns:
+
+                    if column not in row.index:
+                        continue
+
+                    value = row.get(column)
+
+                    if pd.isna(value):
+                        continue
+
+                    if isinstance(value, str):
+                        value = value.strip()
+
+                    if value != "":
+                        return value
+
+                return default
+
+            # Validate required values before processing
+            required_errors = []
+
+            for index, row in df.iterrows():
+
+                excel_row = index + 2
+
+                missing_fields = []
+
+                for field in required_columns:
+
+                    value = get_value(row, field)
+
+                    if value is None:
+                        missing_fields.append(field)
+
+                if missing_fields:
+                    required_errors.append({
+                        "row": excel_row,
+                        "missing_fields": missing_fields
+                    })
+
+            if required_errors:
+                return CustomResponse().errorResponse(
+                    data={
+                        "required_errors": required_errors
+                    },
+                    description=(
+                        "Required fields cannot be empty or NULL. "
+                        "Please correct the Excel file."
+                    )
+                )
+
+            # Active grades
             grades_map = {
                 grade.name.strip().lower(): grade
                 for grade in Grades.objects.filter(is_active=True)
             }
 
+            # Existing words
             existing_words = {
                 (word.strip().lower(), str(grade_id))
                 for word, grade_id in Words.objects.filter(
@@ -948,17 +1006,29 @@ class UploadWords(APIView):
             duplicate_words = []
             invalid_grades = []
             missing_words = []
+            null_fields = []
 
-            def get_value(row, column, default=None):
-                value = row.get(column, default)
-
-                if pd.isna(value):
-                    return default
-
-                if isinstance(value, str):
-                    value = value.strip()
-
-                return value if value != "" else default
+            # Excel to model field mapping
+            field_mapping = {
+                "meaning": ["Definition/ meaning", "Meaning"],
+                "root_word": ["Root word"],
+                "phonetic_script": ["Phonetic script"],
+                "syllabified_stressed_transcript": [
+                    "Syallabified Stressed Transcript",
+                    "Syllabified Stressed Transcript"
+                ],
+                "concept": ["Concept name", "Concept"],
+                "origin": ["Origin"],
+                "origin_word": ["Origin Word (Exact Word)"],
+                "origin_word_meaning": ["Origin Word Meaning"],
+                "usage": ["Usage"],
+                "hint": ["Hint"],
+                "antonym": ["Antonym"],
+                "synonym": ["Synonym"],
+                "part_of_speech": ["Parts Of Speech", "Part Of Speech"],
+                "word_status": ["Status"],
+                "domain": ["Domain"],
+            }
 
             for index, row in df.iterrows():
 
@@ -966,23 +1036,6 @@ class UploadWords(APIView):
 
                 grade_value = get_value(row, "Grade")
                 word_value = get_value(row, "Word")
-
-                if grade_value is None:
-
-                    invalid_grade_count += 1
-                    invalid_grades.append({
-                        "row": excel_row,
-                        "grade": None
-                    })
-                    continue
-
-                if word_value is None:
-
-                    missing_word_count += 1
-                    missing_words.append({
-                        "row": excel_row
-                    })
-                    continue
 
                 grade_name = str(grade_value).strip()
                 word = str(word_value).strip().lower()
@@ -992,10 +1045,12 @@ class UploadWords(APIView):
                 if not grade:
 
                     invalid_grade_count += 1
+
                     invalid_grades.append({
                         "row": excel_row,
                         "grade": grade_name
                     })
+
                     continue
 
                 duplicate_key = (word, str(grade.id))
@@ -1004,40 +1059,46 @@ class UploadWords(APIView):
                 if duplicate_key in seen_in_file:
 
                     duplicate_count += 1
+
                     duplicate_words.append({
                         "row": excel_row,
                         "word": word,
                         "grade": grade.name,
                         "reason": "Duplicate in uploaded file"
                     })
+
                     continue
 
                 seen_in_file.add(duplicate_key)
 
-                # Duplicate already exists in database
+                # Duplicate in database
                 if duplicate_key in existing_words:
 
                     duplicate_count += 1
+
                     duplicate_words.append({
                         "row": excel_row,
                         "word": word,
                         "grade": grade.name,
                         "reason": "Already exists"
                     })
+
                     continue
 
                 existing_words.add(duplicate_key)
 
+                # Difficulty validation
                 difficulty = get_value(
                     row,
-                    "Difficulty Level",
-                    1
+                    "Difficulty Level"
                 )
 
                 try:
                     difficulty = int(float(difficulty))
+
                     if difficulty < 1 or difficulty > 5:
                         raise ValueError
+
                 except (ValueError, TypeError):
                     return CustomResponse().errorResponse(
                         data={
@@ -1049,80 +1110,78 @@ class UploadWords(APIView):
                         )
                     )
 
-                points = get_value(row, "Points", 0)
+                # Points validation
+                points = get_value(row, "Points", default=0)
 
                 try:
                     points = int(float(points))
+
                     if points < 0:
                         raise ValueError
+
                 except (ValueError, TypeError):
                     return CustomResponse().errorResponse(
                         data={
                             "row": excel_row,
                             "points": points
                         },
-                        description="Points must be a non-negative number."
+                        description=(
+                            "Points must be a non-negative number."
+                        )
                     )
 
-                subject = get_value(row, "subject", "English")
+                # Optional fields
+                optional_values = {}
 
+                empty_fields = []
+
+                for model_field, excel_columns in field_mapping.items():
+
+                    value = get_value(
+                        row,
+                        *excel_columns
+                    )
+
+                    optional_values[model_field] = value
+
+                    if value is None:
+                        empty_fields.append(model_field)
+
+                # Subject
+                subject = get_value(
+                    row,
+                    "subject",
+                    "Subject",
+                    default="English"
+                )
+
+                if subject is None:
+                    subject = "English"
+
+                # Record optional NULL fields
+                if empty_fields:
+
+                    null_fields.append({
+                        "row": excel_row,
+                        "word": word,
+                        "fields": empty_fields
+                    })
+
+                # Create word object
                 words_to_create.append(
                     Words(
                         grade=grade,
                         word=word,
-                        meaning=get_value(
-                            row, "Definition/ meaning"
-                        ),
-                        root_word=get_value(
-                            row, "Root word"
-                        ),
-                        phonetic_script=get_value(
-                            row, "Phonetic script"
-                        ),
-                        syllabified_stressed_transcript=get_value(
-                            row, "Syllabified Stressed Transcript"
-                        ),
-                        concept=get_value(
-                            row, "Concept name"
-                        ),
-                        origin=get_value(
-                            row, "Origin"
-                        ),
-                        origin_word=get_value(
-                            row, "Origin Word (Exact Word)"
-                        ),
-                        origin_word_meaning=get_value(
-                            row, "Origin Word Meaning"
-                        ),
-                        usage=get_value(
-                            row, "Usage"
-                        ),
-                        hint=get_value(
-                            row, "Hint"
-                        ),
-                        antonym=get_value(
-                            row, "Antonym"
-                        ),
-                        synonym=get_value(
-                            row, "Synonym"
-                        ),
-                        part_of_speech=get_value(
-                            row, "Parts Of Speech"
-                        ),
                         difficulty=difficulty,
                         points=points,
-                        word_status=get_value(
-                            row, "Status"
-                        ),
-                        domain=get_value(
-                            row, "Domain"
-                        ),
-                        subject=subject
+                        subject=subject,
+                        **optional_values
                     )
                 )
 
                 created_count += 1
 
+            # Bulk create
             with transaction.atomic():
 
                 if words_to_create:
@@ -1142,7 +1201,8 @@ class UploadWords(APIView):
                     },
                     "duplicate_words": duplicate_words,
                     "invalid_grades": invalid_grades,
-                    "missing_words": missing_words
+                    "missing_words": missing_words,
+                    "null_fields": null_fields
                 },
                 description="Words uploaded successfully."
             )
@@ -1159,10 +1219,13 @@ class UploadWords(APIView):
 
         except Exception as e:
 
+
+
             return CustomResponse().errorResponse(
                 data={},
                 description=str(e)
             )
+
 
 
 
