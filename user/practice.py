@@ -11,14 +11,24 @@ from shared.utils import CustomResponse
 class StartPractice(APIView):
 
     def post(self, request):
+        print("\n========== START PRACTICE API STARTED ==========")
+
         kid_id = request.data.get("kid_id")
         no_of_questions = request.data.get("no_of_questions", 10)
         subjects = request.data.get("subjects", [])
+
+        print("Request User ID:", request.user.id)
+        print("Kid ID:", kid_id)
+        print("Number of Questions:", no_of_questions)
+        print("Subjects:", subjects)
+
         if not kid_id:
+            print("ERROR: Kid ID is missing")
             return CustomResponse().errorResponse(
                 data={},
                 description="Kid ID is required"
             )
+
         kid = request.user.kids.filter(
             id=kid_id,
             is_active=True
@@ -27,17 +37,33 @@ class StartPractice(APIView):
         ).first()
 
         if not kid:
+            print("ERROR: Invalid kid or inactive kid")
             return CustomResponse().errorResponse(
                 data={},
                 description="Invalid kid"
             )
+
+        print("Kid Found:", kid.id)
+        print("Kid Grade:", kid.grade_id)
 
         attempt = PracticeAttempts.objects.create(
             kid=kid,
             started_at=timezone.now(),
             total_questions=no_of_questions
         )
+
+        print("Practice Attempt Created:", attempt.id)
+
         response = get_practice_words(kid, no_of_questions)
+
+        print("Total Questions Selected:", len(response))
+        print("Requested Questions:", no_of_questions)
+
+        if not response:
+            print("WARNING: No practice words available")
+
+        print("========== START PRACTICE API COMPLETED ==========\n")
+
         return CustomResponse().successResponse(
             data={
                 "attempt_id": str(attempt.id),
@@ -46,7 +72,6 @@ class StartPractice(APIView):
             },
             description="Practice started successfully"
         )
-
 class SubmitPracticeAnswer(APIView):
 
     @transaction.atomic

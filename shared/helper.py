@@ -11,12 +11,22 @@ import requests
 
 def get_practice_words(kid, no_of_questions=10):
 
+    print("\n========== GET PRACTICE WORDS STARTED ==========")
+
+    print("Kid ID:", kid.id)
+    print("Grade ID:", kid.grade_id)
+    print("Requested Questions:", no_of_questions)
+
     attempted_word_ids = KidWordProgress.objects.filter(
         kid=kid
     ).values_list(
         "word_id",
         flat=True
     )
+
+    attempted_count = attempted_word_ids.count()
+
+    print("Previously Attempted Words Count:", attempted_count)
 
     selected_words = list(
         Words.objects.filter(
@@ -31,9 +41,14 @@ def get_practice_words(kid, no_of_questions=10):
         ).order_by("?")[:no_of_questions]
     )
 
+    print("Initially Selected Words:", len(selected_words))
+
     if len(selected_words) < no_of_questions:
 
         remaining_count = no_of_questions - len(selected_words)
+
+        print("Not Enough Words Available")
+        print("Remaining Questions:", remaining_count)
 
         selected_word_ids = [
             word.id for word in selected_words
@@ -54,13 +69,37 @@ def get_practice_words(kid, no_of_questions=10):
             ).order_by("?")[:remaining_count]
         )
 
+        print("Additional Words Selected:", len(additional_words))
+
         selected_words.extend(additional_words)
+
+    print("Final Selected Words Count:", len(selected_words))
 
     response = []
 
-    for word in selected_words:
+    for index, word in enumerate(selected_words, start=1):
 
         audio = getattr(word, "audio", None)
+
+        print(f"\n----- WORD {index} -----")
+        print("Word ID:", word.id)
+        print("Word:", word.word)
+        print("Voice Status:", word.voice_status)
+        print("Audio Record Exists:", bool(audio))
+
+        if audio:
+            print("Pronunciation Audio:", bool(audio.pronunciation_audio_url))
+            print("Meaning Audio:", bool(audio.meaning_audio_url))
+            print("Part of Speech Audio:", bool(audio.part_of_speech_audio_url))
+            print("Origin Audio:", bool(audio.origin_audio_url))
+            print("Usage Audio:", bool(audio.usage_audio_url))
+            print("Phonetic Script Audio:", bool(audio.phonetic_script_audio_url))
+            print(
+                "Syllabified Transcript Audio:",
+                bool(audio.syllabified_stressed_transcript_audio_url)
+            )
+        else:
+            print("WARNING: WordAudios record not found")
 
         response.append({
 
@@ -116,7 +155,11 @@ def get_practice_words(kid, no_of_questions=10):
             )
         })
 
+    print("\n========== GET PRACTICE WORDS COMPLETED ==========")
+    print("Final Response Word Count:", len(response))
+
     return response
+
 
 
 def getReferralCode():
