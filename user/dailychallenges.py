@@ -140,6 +140,18 @@ class DailyChallengeWordsAPIView(APIView):
                     "part_of_speech": word.part_of_speech,
                     "origin": word.origin,
                     "usage": word.usage,
+                    "root_word": word.root_word,
+                    "phonetic_script": word.phonetic_script,
+                    "syllabified_stressed_transcript": (
+                        word.syllabified_stressed_transcript
+                    ),
+                    "origin_word": word.origin_word or None,
+                    "origin_word_meaning": word.origin_word_meaning or None,
+                    "antonym": word.antonym or None,
+                    "synonym": word.synonym or None,
+                    "points": word.points,
+                    "word_status": word.word_status,
+                    "domain": word.domain,
                     "audios": {
                         "pronunciation_audio_url": (
                             audio.pronunciation_audio_url
@@ -159,6 +171,13 @@ class DailyChallengeWordsAPIView(APIView):
                         ),
                         "usage_audio_url": (
                             audio.usage_audio_url
+                            if audio else None
+                        ),
+                        "phonetic_script_audio_url": (
+                            audio.phonetic_script_audio_url if audio else None
+                        ),
+                        "syllabified_stressed_transcript_audio_url": (
+                            audio.syllabified_stressed_transcript_audio_url
                             if audio else None
                         )
                     }
